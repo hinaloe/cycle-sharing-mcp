@@ -14,7 +14,7 @@ public static partial class TextNormalizer
         foreach (var c in nfkc)
         {
             if (char.IsWhiteSpace(c)) continue;
-            sb.Append(c is >= 'ァ' and <= 'ヶ' ? (char)(c - 0x60) : char.ToLowerInvariant(c));
+            sb.Append(c is >= '\u30A1' and <= '\u30F6' ? (char)(c - 0x60) : char.ToLowerInvariant(c));
         }
         return sb.ToString();
     }
@@ -22,15 +22,16 @@ public static partial class TextNormalizer
     /// <summary>
     /// 住所用。<see cref="Normalize"/> に加えて、番地の書き方の揺れを揃える。
     /// 「一丁目」→「1丁目」、「丁目」→「-」（「台東4丁目」と「台東4-30-6」が互いに当たるように）、
-    /// 数字の後のハイフンに似た記号（ー − ‐ — など）→「-」。
+    /// ハイフンに似た記号（− ‐ — ― など）→「-」、ひらがな・カタカナの後ろ以外の長音記号「ー」→「-」。
     /// </summary>
     public static string NormalizeAddress(string value)
     {
-        var s = Normalize(value.Replace("­", "", StringComparison.Ordinal)); // ソフトハイフン
+        var s = Normalize(value.Replace("\u00AD", "", StringComparison.Ordinal)); // ソフトハイフン
         s = KanjiChome().Replace(s, m => KanjiNumber(m.Groups[1].Value) is { } n ? $"{n}丁目" : m.Value);
         s = s.Replace("丁目", "-", StringComparison.Ordinal);
-        // 「4-ー26」のように丁目の後に記号が重なることもあるので、置き換えたあと連続した「-」を 1 つにする
-        s = HyphenAfterDigit().Replace(s, "-");
+        s = Dashes().Replace(s, "-");
+        s = LongVowelAsHyphen().Replace(s, "-");
+        // 「4丁目ー26」→「4-ー26」→「4--26」のように重なるので、連続した「-」を 1 つにする
         return MultipleHyphens().Replace(s, "-");
     }
 
@@ -56,9 +57,15 @@ public static partial class TextNormalizer
     [GeneratedRegex("([一二三四五六七八九十]+)丁目")]
     private static partial Regex KanjiChome();
 
-    // ー（長音記号）はカタカナ語にも使われるので、数字か「-」の直後で、次が数字のときだけ置き換える
-    [GeneratedRegex(@"(?<=[0-9\-])[‐-―−ー](?=[0-9])")]
-    private static partial Regex HyphenAfterDigit();
+    // ハイフン・ダッシュ類とマイナス記号。仮名の語には使われないので前後を問わず置き換える
+    // （全角ハイフン U+FF0D・小さいハイフン U+FE63 などは NFKC で「-」か U+2014 などになっている）
+    [GeneratedRegex(@"[\u2010-\u2015\u2043\u2212]")]
+    private static partial Regex Dashes();
+
+    // 長音記号はカタカナ語（「センター」）にも使われるので、ひらがな・カタカナ（長音記号自身を含む）の後ろにないものだけ置き換える。
+    // 「4ーー2」のように続いたものはまとめて 1 つの「-」にし、「ドーーム」の 2 つ目は前が長音記号なので置き換えない
+    [GeneratedRegex(@"(?<![\u3041-\u309F\u30A1-\u30FF])\u30FC+")]
+    private static partial Regex LongVowelAsHyphen();
 
     [GeneratedRegex("-{2,}")]
     private static partial Regex MultipleHyphens();
