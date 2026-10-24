@@ -5,7 +5,17 @@ using CycleSharingMcp.Core.Gbfs;
 
 namespace CycleSharingMcp;
 
-public sealed record OdptOptions(string? AccessToken);
+public sealed record OdptOptions(string? AccessToken)
+{
+    // record の ToString() は全項目を出すので、設定をログに出してもトークンが出ないよう伏せる
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("AccessToken = ").Append(Redact(AccessToken));
+        return true;
+    }
+
+    internal static string Redact(string? secret) => secret is null ? "(なし)" : "***";
+}
 
 /// <summary>ODPT から GBFS フィードを取得し、メモリにキャッシュする。</summary>
 public sealed class OdptFeedSource : IFeedSource

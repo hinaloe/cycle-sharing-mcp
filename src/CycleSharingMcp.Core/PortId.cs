@@ -7,7 +7,8 @@ public readonly record struct PortId(Operator Operator, string StationId)
     {
         id = default;
         var parts = value?.Trim().Split(':', 2);
-        if (parts is not [var op, var station] || station.Length == 0) return false;
+        // 「docomo: 5053」のように区切りの前後に空白があっても受け付ける
+        if (parts is not [var op, var rawStation] || rawStation.Trim() is not { Length: > 0 } station) return false;
         if (!OperatorExtensions.TryParse(op, out var parsed)) return false;
         id = new PortId(parsed, station);
         return true;

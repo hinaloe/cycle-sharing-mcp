@@ -137,7 +137,8 @@ public sealed class BikeshareService(IFeedSource feeds)
 
         var views = parsed.Select(x =>
         {
-            if (!x.Ok) return new PortStatusView(x.Raw, Error: PortId.InvalidMessage(x.Raw));
+            // null のままだと JSON から port_id ごと消えて、どの要素の結果か分からなくなるので空文字にする
+            if (!x.Ok) return new PortStatusView(x.Raw ?? "", Error: PortId.InvalidMessage(x.Raw));
             var d = data[x.Id.Operator];
             d.Names.TryGetValue(x.Id.StationId, out var name);
             if (!d.Statuses.TryGetValue(x.Id.StationId, out var s))

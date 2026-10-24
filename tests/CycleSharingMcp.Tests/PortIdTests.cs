@@ -6,6 +6,8 @@ public class PortIdTests
     [InlineData("docomo:5053", Operator.Docomo, "5053")]
     [InlineData("hellocycling:17", Operator.HelloCycling, "17")]
     [InlineData("  Docomo:5053 ", Operator.Docomo, "5053")]
+    [InlineData("docomo: 5053", Operator.Docomo, "5053")]
+    [InlineData("hellocycling :17", Operator.HelloCycling, "17")]
     public void Parse_AcceptsValidIds(string input, Operator op, string station)
         => Assert.Equal(new PortId(op, station), PortId.Parse(input));
 
