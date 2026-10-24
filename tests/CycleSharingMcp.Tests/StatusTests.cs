@@ -41,6 +41,18 @@ public class StatusTests
         Assert.False(fake.Calls.ContainsKey((Operator.HelloCycling, "station_information")));
     }
 
+    [Fact]
+    public async Task Status_DuplicateIdsInFeed_DoNotBreakOtherPorts()
+    {
+        // 上流のフィードに同じ station_id・vehicle_type_id が重複して載っても落ちない
+        fake.Ports[Operator.HelloCycling].Add(fake.Ports[Operator.HelloCycling].Single(p => p.Id.StationId == "17"));
+        fake.VehicleTypes[Operator.HelloCycling].Add(fake.VehicleTypes[Operator.HelloCycling][0]);
+
+        var r = await svc.GetPortStatusAsync(["hellocycling:17"], default);
+
+        Assert.Equal(2, r.Ports.Single().NumBikesAvailable);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(41)]

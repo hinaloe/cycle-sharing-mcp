@@ -25,24 +25,27 @@ public sealed record ServerOptions(bool Http, string Host, int Port, string? Acc
 
         for (var i = 0; i < args.Count; i++)
         {
-            switch (args[i])
+            // --name=value の形も受け付ける
+            var (name, inline) = args[i].IndexOf('=') is var eq and > 0 ? (args[i][..eq], args[i][(eq + 1)..]) : (args[i], null);
+            switch (name)
             {
-                case "--http":
+                case "--http" when inline is null:
                     http = true;
                     break;
                 case "--host":
-                    host = Value(args, ref i);
+                    host = Value(name, inline, args, ref i);
                     break;
                 case "--port":
-                    var raw = Value(args, ref i);
+                    var raw = Value(name, inline, args, ref i);
                     if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out port) || port is < 1 or > 65535)
                         throw new ArgumentException($"--port は 1〜65535 の数値で指定してください: {raw}");
                     break;
                 case "--odpt-token":
-                    token = Value(args, ref i);
+                    token = Value(name, inline, args, ref i);
                     break;
                 default:
-                    throw new ArgumentException($"不明な引数です: {args[i]}");
+                    // 値はトークンかもしれないので、メッセージには = の手前だけを出す
+                    throw new ArgumentException($"不明な引数です: {name}");
             }
         }
 
@@ -50,9 +53,10 @@ public sealed record ServerOptions(bool Http, string Host, int Port, string? Acc
         return new ServerOptions(http, host, port, token);
     }
 
-    private static string Value(IReadOnlyList<string> args, ref int i)
+    private static string Value(string name, string? inline, IReadOnlyList<string> args, ref int i)
     {
-        var name = args[i];
+        if (inline is not null)
+            return inline.Length > 0 ? inline : throw new ArgumentException($"{name} の値を指定してください。");
         if (++i >= args.Count || args[i].Length == 0 || args[i].StartsWith("--", StringComparison.Ordinal))
             throw new ArgumentException($"{name} の値を指定してください。");
         return args[i];

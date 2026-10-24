@@ -158,10 +158,12 @@ public sealed class BikeshareService(IFeedSource feeds)
         var ports = await portsTask;
         var statuses = await statusesTask;
         var types = typesTask is null ? [] : await typesTask;
-        return new OperatorStatusData(
-            ports.ToDictionary(p => p.Id.StationId, p => p.Name),
-            statuses,
-            types.ToDictionary(t => t.VehicleTypeId));
+        // 上流のフィードに ID の重複があっても落ちないよう、先に出たものを使う
+        var names = new Dictionary<string, string>();
+        foreach (var p in ports) names.TryAdd(p.Id.StationId, p.Name);
+        var typesById = new Dictionary<string, VehicleType>();
+        foreach (var t in types) typesById.TryAdd(t.VehicleTypeId, t);
+        return new OperatorStatusData(names, statuses, typesById);
     }
 
     private static readonly TimeSpan Jst = TimeSpan.FromHours(9);
