@@ -83,9 +83,10 @@ README に記載し、`get_operator_info` の応答にも含める。
 リアルタイム状態は含めない（`get_port_status` で引く）。
 
 `capacity` について（実装者判断として設計時に決めたもの）: HELLO CYCLING の `station_information` には GBFS 標準の `capacity` がなく、標準外の `vehicle_capacity` が文字列（例: `"8"`）で入っている。
-これを整数にして `capacity` に入れる。ただし HELLO CYCLING では約 28% のポートで `num_bikes_available + num_docks_available` が `vehicle_capacity` より小さい（ドコモは全件一致）。
+これを整数にして `capacity` に入れる。ただし HELLO CYCLING では約 28% のポートで `num_bikes_available + num_docks_available` が `vehicle_capacity` より小さい。
 電池切れなどで使えない車両・枠が数えられていない差と思われる（HELLO CYCLING の `station_status` には `num_bikes_disabled` / `num_docks_disabled` がない）。
-ツール説明に「HELLO CYCLING の capacity は設置上の収容数で、使えない車両・枠を含むため、貸出可能台数と返却可能数の合計より大きいことがある」と書く。
+ドコモ・バイクシェアの `capacity` も、0 のポート（2026-10-25 時点で約 6,200 件中 360 件）や、その合計と合わないポート（同 434 件）がある。
+ツール説明には「capacity は目安で、空きの判断には get_port_status の台数を見ること」と、事業者ごとの上記のずれを書く。
 
 ### `search_ports_nearby`
 

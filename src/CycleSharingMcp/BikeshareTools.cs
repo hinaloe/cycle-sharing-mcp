@@ -11,7 +11,9 @@ public sealed class BikeshareTools(BikeshareService service)
     private const string OperatorDescription = "事業者で絞る。docomo（ドコモ・バイクシェア）か hellocycling（HELLO CYCLING）。省略すると両方";
 
     private const string CapacityNote =
-        "HELLO CYCLING の capacity は設置上の収容数で、使えない車両・枠を含むため、貸出可能台数と返却可能数の合計より大きいことがある。";
+        "capacity（収容数）は目安で、空きの判断には使わず get_port_status の台数を見ること。"
+        + "HELLO CYCLING は使えない車両・枠も含む設置上の数で、貸出可能台数と返却可能数の合計より大きいことがある。"
+        + "ドコモ・バイクシェアは 0 のことや、その合計と合わないことがある。";
 
     [McpServerTool(Name = "search_ports_nearby", ReadOnly = true, Idempotent = true)]
     [Description($"""
