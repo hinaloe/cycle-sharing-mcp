@@ -6,6 +6,9 @@ public sealed class BikeshareService(IFeedSource feeds)
 {
     public const int MaxResults = 40;
 
+    /// <summary>住所検索が多すぎるときにエラーへ載せる絞り込み候補の数。</summary>
+    private const int MaxCandidates = 20;
+
     public async Task<PortListResponse> SearchNearbyAsync(double latitude, double longitude, string? @operator, int limit, CancellationToken ct)
     {
         if (latitude is < -90 or > 90 || double.IsNaN(latitude))
@@ -33,7 +36,14 @@ public sealed class BikeshareService(IFeedSource feeds)
         var ports = await feeds.GetPortsAsync(Operator.HelloCycling, ct);
         var matches = ports.Where(p => p.SearchAddress?.Contains(query, StringComparison.Ordinal) == true).ToList();
         if (matches.Count > MaxResults)
-            throw new BikeshareException($"住所「{address}」に一致するポートが {matches.Count} 件あります（上限 {MaxResults} 件）。番地など、もっと詳しい住所で絞り込んでください。");
+        {
+            var candidates = AddressGrouper.Split(query, matches.Select(p => p.SearchAddress!), MaxResults);
+            var shown = string.Join(", ", candidates.Take(MaxCandidates).Select(c => $"{c.Text} ({c.Count})"));
+            var rest = candidates.Count > MaxCandidates ? $"、ほか {candidates.Count - MaxCandidates} 候補" : "";
+            throw new BikeshareException(
+                $"住所「{address}」に一致するポートが {matches.Count} 件あります（上限 {MaxResults} 件）。もっと詳しい住所で絞り込んでください。" +
+                $"次の語で検索すると絞り込めます（括弧内は件数）: {shown}{rest}");
+        }
 
         var views = matches
             .OrderBy(p => p.Address, StringComparer.Ordinal)

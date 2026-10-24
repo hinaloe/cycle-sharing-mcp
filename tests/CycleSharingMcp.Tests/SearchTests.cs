@@ -99,6 +99,8 @@ public class SearchTests
     {
         var ex = await Assert.ThrowsAsync<BikeshareException>(() => WithMarunouchi(41).SearchByAddressAsync("丸の内", default));
         Assert.Contains("41", ex.Message);
+        // 次に検索すれば 40 件以内に収まる候補を件数付きで示す
+        Assert.Contains("丸の内1 (11)", ex.Message);
     }
 
     [Fact]
