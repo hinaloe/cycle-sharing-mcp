@@ -168,9 +168,9 @@ public sealed class BikeshareService(IFeedSource feeds)
 
     private static readonly TimeSpan Jst = TimeSpan.FromHours(9);
 
-    // タイムゾーン DB に頼らず固定の +09:00 で表示する（日本に夏時間はない）
+    // タイムゾーン DB に頼らず固定の +09:00 で表示する（日本に夏時間はない）。日本時間か UTC か迷わないよう時差を付ける
     private static string FormatJst(long unixSeconds) =>
-        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToOffset(Jst).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToOffset(Jst).ToString("yyyy-MM-dd'T'HH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture);
 
     private async Task<IReadOnlyList<Port>> GetPortsAsync(Operator? op, CancellationToken ct)
     {

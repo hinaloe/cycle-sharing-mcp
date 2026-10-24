@@ -14,7 +14,7 @@ public class StatusTests
         Assert.Equal(["docomo:5053", "hellocycling:17", "hellocycling:999999", "bad"], r.Ports.Select(p => p.PortId));
 
         var docomo = r.Ports[0];
-        Assert.Equal(("M05.塩見縄手", 4, 2, "2026-10-24 19:54:36"),
+        Assert.Equal(("M05.塩見縄手", 4, 2, "2026-10-24T19:54:36+09:00"),
                      (docomo.Name, docomo.NumBikesAvailable!.Value, docomo.NumDocksAvailable!.Value, docomo.LastReported));
         Assert.Equal((true, true, true), (docomo.IsInstalled, docomo.IsRenting, docomo.IsReturning));
         Assert.Null(docomo.VehicleTypesAvailable);
@@ -22,7 +22,7 @@ public class StatusTests
         Assert.Null(docomo.Error);
 
         var hello = r.Ports[1];
-        Assert.Equal(("新御徒町ステーション", "2026-10-24 19:50:02"), (hello.Name, hello.LastReported));
+        Assert.Equal(("新御徒町ステーション", "2026-10-24T19:50:02+09:00"), (hello.Name, hello.LastReported));
         Assert.Equal(new VehicleAvailabilityView("2", "hellocycling bicycle", "electric_assist", 2), Assert.Single(hello.VehicleTypesAvailable!));
         var dock = Assert.Single(hello.VehicleDocksAvailable!);
         Assert.Equal(["hellocycling bicycle"], dock.VehicleTypes);

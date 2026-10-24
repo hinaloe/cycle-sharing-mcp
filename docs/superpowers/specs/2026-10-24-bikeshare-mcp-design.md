@@ -144,7 +144,7 @@ HELLO CYCLING 専用。住所の部分一致。
 - `port_id`, `name`
 - `num_bikes_available`, `num_docks_available`
 - `is_installed`, `is_renting`, `is_returning`
-- `last_reported`（日本時間 `yyyy-MM-dd HH:mm:ss`）
+- `last_reported`（日本時間の ISO 8601、時差付き。例: `2026-10-24T19:54:36+09:00`）
 - HELLO CYCLING のみ: 車種別の貸出可能台数・返却可能数（`vehicle_type_id` を `vehicle_types` の名前・`propulsion_type` に置き換えて返す）。
   返却可能数（`vehicle_docks_available`）は GBFS では複数の車種 ID をまとめた単位で返るので、その単位のまま返す（2026-10 時点で車種は電動アシスト自転車の 1 種類のみ）。
 
