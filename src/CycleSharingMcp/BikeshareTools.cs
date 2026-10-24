@@ -63,7 +63,9 @@ public sealed class BikeshareTools(BikeshareService service)
     [McpServerTool(Name = "get_port_status", ReadOnly = true, Idempotent = true)]
     [Description("""
         ポートのリアルタイム状態（貸出可能台数 num_bikes_available、返却可能数 num_docks_available、貸出・返却ができるか、最終報告時刻）を返す。
-        HELLO CYCLING は車種ごとの台数も返す。データは最大 1 分前のもの。
+        is_installed はポートが設置されて稼働しているか（false なら撤去中・設置前）。last_reported は最後に状態が報告された日本時間。
+        HELLO CYCLING は車種ごとの台数も返す。vehicle_types_available は車種ごとの貸出可能台数、
+        vehicle_docks_available は返却可能な空き枠を、そこへ返せる車種（vehicle_types）ごとにまとめた数（count）。データは最大 1 分前のもの。
         is_renting / is_returning が false のポート（夜間に閉まる駐輪場の営業時間外など）では、貸出・返却はできない。
         そのときも num_bikes_available / num_docks_available はその場にある実際の台数・空き枠の数が入るので、0 でなくても借りられる・返せると案内しないこと。
         ポート ID は検索ツールの結果の port_id（例: docomo:5053, hellocycling:17）。最大 40 件まとめて指定できる。
