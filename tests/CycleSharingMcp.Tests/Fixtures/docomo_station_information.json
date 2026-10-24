@@ -1,0 +1,5 @@
+{"ttl":60,"data":{"stations":[
+{"lat":35.478819,"lon":133.04884,"name":"M05.塩見縄手","capacity":6,"region_id":"2","station_id":"5053"},
+{"lat":35.760939,"lon":139.609264,"name":"T2-54.土支田農業公園","capacity":7,"region_id":"9","station_id":"1131"},
+{"lat":35.6457,"lon":139.8268,"name":"H1-57.新木場駅","capacity":20,"region_id":"1","station_id":"100"}
+]},"version":"2.3","last_updated":1792839276}
