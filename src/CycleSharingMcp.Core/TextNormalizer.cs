@@ -57,14 +57,15 @@ public static partial class TextNormalizer
     [GeneratedRegex("([一二三四五六七八九十]+)丁目")]
     private static partial Regex KanjiChome();
 
-    // ハイフン・ダッシュ類とマイナス記号。仮名の語には使われないので前後を問わず置き換える
-    // （全角ハイフン U+FF0D・小さいハイフン U+FE63 などは NFKC で「-」か U+2014 などになっている）
-    [GeneratedRegex(@"[\u2010-\u2015\u2043\u2212]")]
+    // ハイフン・ダッシュ類（Unicode の Dash_Punctuation）と、Pd に入っていないマイナス記号・ハイフン箇条書き記号。
+    // 仮名の語には使われないので前後を問わず置き換える。波ダッシュと波線ダッシュは Pd だが、
+    // 「1〜3番」のように範囲を表すので除く
+    [GeneratedRegex(@"[\p{Pd}\u2212\u2043-[\u301c\u3030]]")]
     private static partial Regex Dashes();
 
-    // 長音記号はカタカナ語（「センター」）にも使われるので、ひらがな・カタカナ（長音記号自身を含む）の後ろにないものだけ置き換える。
+    // 長音記号はカタカナ語（「センター」）にも使われるので、ひらがな・カタカナのブロック（長音記号自身を含む）の文字の後ろにないものだけ置き換える。
     // 「4ーー2」のように続いたものはまとめて 1 つの「-」にし、「ドーーム」の 2 つ目は前が長音記号なので置き換えない
-    [GeneratedRegex(@"(?<![\u3041-\u309F\u30A1-\u30FF])\u30FC+")]
+    [GeneratedRegex(@"(?<![\p{IsHiragana}\p{IsKatakana}])\u30FC+")]
     private static partial Regex LongVowelAsHyphen();
 
     [GeneratedRegex("-{2,}")]

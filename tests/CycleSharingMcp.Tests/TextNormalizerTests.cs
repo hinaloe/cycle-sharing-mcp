@@ -31,6 +31,9 @@ public class TextNormalizerTests
     [InlineData("センター北1", "せんたー北1")]
     [InlineData("ドーーム前1", "どーーむ前1")]
     [InlineData("ヴィラルヴェロ", "ゔぃらるゔぇろ")]
+    [InlineData("1⁃2", "1-2")] // U+2043 ハイフン箇条書き記号（Pd ではないが含める）
+    [InlineData("1〜3", "1〜3")] // U+301C 波ダッシュ（Pd だが範囲の意味なので変えない）
+    [InlineData("1〰3", "1〰3")] // U+3030 波線ダッシュも同じ
     public void NormalizeAddress_ChomeAsHyphen(string input, string expected)
         => Assert.Equal(expected, TextNormalizer.NormalizeAddress(input));
 
