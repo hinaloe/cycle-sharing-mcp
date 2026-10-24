@@ -66,6 +66,110 @@ public sealed class BikeshareService(IFeedSource feeds)
             : null);
     }
 
+    /// <summary>ポート ID からリアルタイム状態を引く。ID ごとのエラーはその要素の Error に入れ、他の要素は返す。</summary>
+    public async Task<PortStatusResponse> GetPortStatusAsync(IReadOnlyList<string> portIds, CancellationToken ct)
+    {
+        if (portIds is null || portIds.Count is < 1 or > MaxResults)
+            throw new BikeshareException($"port_ids は 1〜{MaxResults} 件で指定してください。");
+
+        var parsed = portIds.Select(raw => (Raw: raw, Ok: PortId.TryParse(raw, out var id), Id: id)).ToList();
+        var operators = parsed.Where(x => x.Ok).Select(x => x.Id.Operator).Distinct().ToList();
+
+        var data = new Dictionary<Operator, OperatorStatusData>();
+        foreach (var (op, d) in await Task.WhenAll(operators.Select(async op => (op, await LoadStatusDataAsync(op, ct)))))
+            data[op] = d;
+
+        var views = parsed.Select(x =>
+        {
+            if (!x.Ok) return new PortStatusView(x.Raw, Error: PortId.InvalidMessage(x.Raw));
+            var d = data[x.Id.Operator];
+            d.Names.TryGetValue(x.Id.StationId, out var name);
+            if (!d.Statuses.TryGetValue(x.Id.StationId, out var s))
+                return name is null
+                    ? new PortStatusView(x.Id.ToString(), Error: "ポートが見つかりません。")
+                    : new PortStatusView(x.Id.ToString(), name, Error: "このポートの状態が配信されていません。");
+
+            var isHello = x.Id.Operator == Operator.HelloCycling;
+            return new PortStatusView(
+                x.Id.ToString(),
+                name,
+                s.NumBikesAvailable,
+                s.NumDocksAvailable,
+                s.IsInstalled,
+                s.IsRenting,
+                s.IsReturning,
+                s.LastReported is { } t ? FormatJst(t) : null,
+                isHello
+                    ? s.VehicleTypesAvailable.Select(v =>
+                    {
+                        d.VehicleTypes.TryGetValue(v.VehicleTypeId, out var vt);
+                        return new VehicleAvailabilityView(v.VehicleTypeId, vt?.Name, vt?.PropulsionType, v.Count);
+                    }).ToList()
+                    : null,
+                isHello
+                    ? s.VehicleDocksAvailable.Select(dock => new DockAvailabilityView(
+                        dock.VehicleTypeIds.Select(id => d.VehicleTypes.TryGetValue(id, out var vt) && vt.Name is not null ? vt.Name : id).ToList(),
+                        dock.Count)).ToList()
+                    : null);
+        }).ToList();
+        return new PortStatusResponse(views);
+    }
+
+    public async Task<OperatorInfoResponse> GetOperatorInfoAsync(string? @operator, CancellationToken ct)
+    {
+        var ops = OperatorExtensions.ParseOptional(@operator) is { } single ? [single] : OperatorExtensions.All;
+        var views = await Task.WhenAll(ops.Select(async op =>
+        {
+            var infoTask = feeds.GetSystemInformationAsync(op, ct);
+            var portsTask = feeds.GetPortsAsync(op, ct);
+            var typesTask = op == Operator.HelloCycling ? feeds.GetVehicleTypesAsync(op, ct) : null;
+            var info = await infoTask;
+            var ports = await portsTask;
+            var types = typesTask is null ? null : await typesTask;
+            return new OperatorInfoView(
+                op.Key(),
+                info.Name,
+                info.ShortName,
+                info.Operator,
+                info.Url,
+                info.TermsUrl,
+                info.PrivacyUrl,
+                info.IosStoreUri,
+                info.AndroidStoreUri,
+                ports.Count,
+                types?.Select(t => new VehicleTypeView(t.VehicleTypeId, t.Name, t.FormFactor, t.PropulsionType, t.MaxRangeMeters)).ToList(),
+                op.Credit(),
+                op.License(),
+                info.LicenseUrl);
+        }));
+        return new OperatorInfoResponse(views);
+    }
+
+    private sealed record OperatorStatusData(
+        IReadOnlyDictionary<string, string> Names,
+        IReadOnlyDictionary<string, StationStatus> Statuses,
+        IReadOnlyDictionary<string, VehicleType> VehicleTypes);
+
+    private async Task<OperatorStatusData> LoadStatusDataAsync(Operator op, CancellationToken ct)
+    {
+        var portsTask = feeds.GetPortsAsync(op, ct);
+        var statusesTask = feeds.GetStatusesAsync(op, ct);
+        var typesTask = op == Operator.HelloCycling ? feeds.GetVehicleTypesAsync(op, ct) : null;
+        var ports = await portsTask;
+        var statuses = await statusesTask;
+        var types = typesTask is null ? [] : await typesTask;
+        return new OperatorStatusData(
+            ports.ToDictionary(p => p.Id.StationId, p => p.Name),
+            statuses,
+            types.ToDictionary(t => t.VehicleTypeId));
+    }
+
+    private static readonly TimeSpan Jst = TimeSpan.FromHours(9);
+
+    // タイムゾーン DB に頼らず固定の +09:00 で表示する（日本に夏時間はない）
+    private static string FormatJst(long unixSeconds) =>
+        DateTimeOffset.FromUnixTimeSeconds(unixSeconds).ToOffset(Jst).ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+
     private async Task<IReadOnlyList<Port>> GetPortsAsync(Operator? op, CancellationToken ct)
     {
         if (op is { } single) return await feeds.GetPortsAsync(single, ct);

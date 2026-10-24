@@ -33,6 +33,21 @@ public static class OperatorExtensions
         _ => throw new ArgumentOutOfRangeException(nameof(op)),
     };
 
+    /// <summary>ODPT のデータのクレジット表示（提供者名）。</summary>
+    public static string Credit(this Operator op) => op switch
+    {
+        Operator.Docomo => "株式会社ドコモ・バイクシェア / 公共交通オープンデータ協議会",
+        Operator.HelloCycling => "OpenStreet株式会社 / 公共交通オープンデータ協議会",
+        _ => throw new ArgumentOutOfRangeException(nameof(op)),
+    };
+
+    public static string License(this Operator op) => op switch
+    {
+        Operator.Docomo => "CC BY 4.0",
+        Operator.HelloCycling => "CC BY 4.0 / ODC BY 1.0 / ODbL 1.0",
+        _ => throw new ArgumentOutOfRangeException(nameof(op)),
+    };
+
     public static bool TryParse(string? value, out Operator op)
     {
         foreach (var candidate in All)

@@ -15,7 +15,10 @@ public readonly record struct PortId(Operator Operator, string StationId)
 
     public static PortId Parse(string value) => TryParse(value, out var id)
         ? id
-        : throw new BikeshareException($"ポート ID「{value}」の形式が正しくありません。検索結果の port_id（例: docomo:5053, hellocycling:17）を指定してください。");
+        : throw new BikeshareException(InvalidMessage(value));
+
+    internal static string InvalidMessage(string? value) =>
+        $"ポート ID「{value}」の形式が正しくありません。検索結果の port_id（例: docomo:5053, hellocycling:17）を指定してください。";
 
     public override string ToString() => $"{Operator.Key()}:{StationId}";
 }
