@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "timezone": "Asia/Tokyo",
+  "minimumReleaseAge": "3 days",
+  "customManagers": [
+    {
+      "description": "ワークフローの setup-dotnet に渡す .NET SDK のバージョン（mise.toml の dotnet-core と揃える）",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": ["dotnet-version: '(?<currentValue>[^']+)'"],
+      "datasourceTemplate": "dotnet-version",
+      "depNameTemplate": "dotnet-sdk"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "mise.toml とワークフローの .NET SDK は同じ PR で上げる",
+      "groupName": ".NET SDK",
+      "matchDatasources": ["dotnet-version"]
+    },
+    {
+      "description": "GitHub Actions はまとめて上げる（pinact と同じくコミット SHA に固定したまま）",
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"]
+    },
+    {
+      "description": "dotnet/runtime から同時にリリースされる Microsoft.Extensions",
+      "groupName": "Microsoft.Extensions",
+      "matchPackageNames": ["Microsoft.Extensions.Hosting", "Microsoft.Extensions.Http"]
+    },
+    {
+      "description": "MCP SDK 本体と ASP.NET Core 用は同じバージョンで揃える",
+      "groupName": "ModelContextProtocol",
+      "matchPackageNames": ["ModelContextProtocol", "ModelContextProtocol.*"]
+    },
+    {
+      "description": "テストだけで使うパッケージ",
+      "groupName": "テスト用パッケージ",
+      "matchPackageNames": ["xunit.v3", "Microsoft.Extensions.TimeProvider.Testing"]
+    }
+  ]
+}
