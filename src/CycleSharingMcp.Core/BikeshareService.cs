@@ -40,7 +40,7 @@ public sealed class BikeshareService(IFeedSource feeds)
             .Select(p => PortView.From(p))
             .ToList();
         return new PortListResponse(views, views.Count == 0
-            ? "一致するポートがありません。都道府県名や番地を省くなど、短い住所で試してください（漢数字と算用数字は区別されます）。"
+            ? "住所が一致する HELLO CYCLING のポートはありません。そもそもその地域にポートがないか、表記の違い（漢数字と算用数字など）で外れている可能性があります。町名までに短くするか、search_ports_nearby で座標から探してください。"
             : null);
     }
 

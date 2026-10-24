@@ -32,7 +32,8 @@ public sealed class BikeshareTools(BikeshareService service)
     [McpServerTool(Name = "search_ports_by_address", ReadOnly = true, Idempotent = true)]
     [Description($"""
         HELLO CYCLING のポートを住所の部分一致で探す（ドコモ・バイクシェアには住所データがないので対象外。ドコモは search_ports_by_name か search_ports_nearby を使う）。
-        全角・半角、ひらがな・カタカナの違いは無視する。漢数字と算用数字（四丁目 / 4丁目）は区別する。
+        住所は「東京都台東区台東４丁目３１－１」「東京都台東区台東4-30-6」のように都道府県名から始まる。
+        全角・半角、ひらがな・カタカナの違いは無視し、「4丁目」と「4-」は同じものとして扱う。漢数字と算用数字（四丁目 / 4丁目）は区別する。
         最大 40 件。一致が 40 件を超えるとエラーになるので、番地などを足して絞り込む。
         空き状況は含まないので、必要なら port_id を get_port_status に渡す。
         {CapacityNote}

@@ -78,7 +78,9 @@ public class SearchTests
     {
         var r = await svc.SearchByAddressAsync("たいとう", default);
         Assert.Empty(r.Ports);
-        Assert.NotNull(r.Note);
+        // 入力の誤りと決めつけず、HELLO CYCLING に無いだけの可能性と次の手段を示す
+        Assert.Contains("HELLO CYCLING", r.Note);
+        Assert.Contains("search_ports_nearby", r.Note);
     }
 
     [Fact]
