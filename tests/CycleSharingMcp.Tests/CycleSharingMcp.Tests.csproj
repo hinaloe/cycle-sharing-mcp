@@ -19,11 +19,13 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="CycleSharingMcp" />
     <Using Include="CycleSharingMcp.Core" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CycleSharingMcp.Core\CycleSharingMcp.Core.csproj" />
+    <ProjectReference Include="..\..\src\CycleSharingMcp\CycleSharingMcp.csproj" />
   </ItemGroup>
 
   <ItemGroup>
