@@ -13,7 +13,8 @@ public sealed class BikeshareTools(BikeshareService service)
     private const string PortFieldsNote =
         "capacity（収容数）は目安で、空きの判断には使わず get_port_status の台数を見ること。"
         + "HELLO CYCLING は使えない車両・枠も含む設置上の数で、貸出可能台数と返却可能数の合計より大きいことがある。"
-        + "ドコモ・バイクシェアは 0 のことや、その合計と合わないことがある。999 以上は実質的に上限なしを表す。"
+        + "ドコモ・バイクシェアは 0 のことや、その合計と合わないことがある。"
+        + "1000 以上（HELLO CYCLING は 1000、ドコモ・バイクシェアは 32767）は、返却台数に上限がないポートを表す。"
         + "is_charging_station（HELLO CYCLING のみ）は電動サイクル（特定小型原動機付自転車）用の充電器があるポートを表し、"
         + "電動アシスト自転車のバッテリーを交換・充電できるという意味ではない。"
         + "region_id（ドコモ・バイクシェアのみ）は地域の番号で、地域名を引くデータはない。";
@@ -67,6 +68,8 @@ public sealed class BikeshareTools(BikeshareService service)
     [McpServerTool(Name = "get_port_status", ReadOnly = true, Idempotent = true)]
     [Description("""
         ポートのリアルタイム状態（貸出可能台数 num_bikes_available、返却可能数 num_docks_available、貸出・返却ができるか、最終報告時刻）を返す。
+        返却台数に上限がないポートでは、num_docks_available が 950〜1000 や 32767 のような大きな値になる。
+        空き枠の数として案内せず「返却可能（台数の制限なし）」と案内すること（公式アプリでも「可能」と表示される）。
         is_installed はポートが設置されて稼働しているか（false なら撤去中・設置前）。
         last_reported は状態が報告された日本時間。HELLO CYCLING はポートごとの時刻だが、ドコモ・バイクシェアはデータ全体の更新時刻で全ポート同じ。
         ドコモ・バイクシェアには車種のデータがなく、電動アシストかどうかは分からない。
