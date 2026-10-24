@@ -61,6 +61,8 @@ public sealed class BikeshareTools(BikeshareService service)
     [Description("""
         ポートのリアルタイム状態（貸出可能台数 num_bikes_available、返却可能数 num_docks_available、貸出・返却ができるか、最終報告時刻）を返す。
         HELLO CYCLING は車種ごとの台数も返す。データは最大 1 分前のもの。
+        is_renting / is_returning が false のポート（夜間に閉まる駐輪場の営業時間外など）では、貸出・返却はできない。
+        そのときも num_bikes_available / num_docks_available はその場にある実際の台数・空き枠の数が入るので、0 でなくても借りられる・返せると案内しないこと。
         ポート ID は検索ツールの結果の port_id（例: docomo:5053, hellocycling:17）。最大 40 件まとめて指定できる。
         ID が誤っている・見つからない要素には error が入り、他の要素は通常どおり返る。
         """)]
