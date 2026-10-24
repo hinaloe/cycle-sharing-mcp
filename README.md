@@ -91,3 +91,7 @@ publish したバイナリを stdio で起動し、MCP の initialize と tools/
 ```sh
 python3 .github/scripts/smoke_test.py dist/cycle-sharing-mcp
 ```
+
+## ライセンス
+
+このリポジトリのコードは [MIT License](LICENSE)。取得するデータのライセンスは「クレジット表示とライセンス」のとおり。
