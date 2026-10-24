@@ -30,7 +30,7 @@ public static class GbfsParser
                 Object(s, "rental_uris") is { } uris ? String(uris, "web") : null)
             {
                 SearchName = TextNormalizer.Normalize(name),
-                SearchAddress = address is null ? null : TextNormalizer.Normalize(address),
+                SearchAddress = address is null ? null : TextNormalizer.NormalizeAddress(address),
             });
         }
         return ports;

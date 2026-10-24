@@ -28,7 +28,7 @@ internal sealed class FakeFeedSource : IFeedSource
         new(new PortId(op, id), name, lat, lon, null, null, address, null, null, null)
         {
             SearchName = TextNormalizer.Normalize(name),
-            SearchAddress = address is null ? null : TextNormalizer.Normalize(address),
+            SearchAddress = address is null ? null : TextNormalizer.NormalizeAddress(address),
         };
 
     public Task<IReadOnlyList<Port>> GetPortsAsync(Operator op, CancellationToken ct)

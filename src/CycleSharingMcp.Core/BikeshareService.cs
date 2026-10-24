@@ -27,7 +27,7 @@ public sealed class BikeshareService(IFeedSource feeds)
     /// <summary>HELLO CYCLING 専用（ドコモ・バイクシェアのデータには住所がない）。</summary>
     public async Task<PortListResponse> SearchByAddressAsync(string address, CancellationToken ct)
     {
-        var query = TextNormalizer.Normalize(address ?? "");
+        var query = TextNormalizer.NormalizeAddress(address ?? "");
         if (query.Length == 0) throw new BikeshareException("address を指定してください。");
 
         var ports = await feeds.GetPortsAsync(Operator.HelloCycling, ct);

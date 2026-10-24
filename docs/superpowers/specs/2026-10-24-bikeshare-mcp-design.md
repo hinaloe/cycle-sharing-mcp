@@ -165,6 +165,7 @@ HELLO CYCLING 専用。住所の部分一致。
 - Unicode 正規化 NFKC。
 - 全角/半角、ひらがな/カタカナ、大文字/小文字を区別しない（ICU の `CompareOptions.IgnoreWidth | IgnoreKanaType | IgnoreCase` 相当。実装は比較前の文字列変換でも `CompareInfo` でもよい）。
 - 空白は除いて比べる。
+- 住所検索だけは、さらに「丁目」を「-」に揃える（「台東4丁目」と「台東4-30-6」が互いに当たるように）。
 - そのため `InvariantGlobalization` は `false` のまま（参考実装と同じ）。
 
 ## 起動と設定

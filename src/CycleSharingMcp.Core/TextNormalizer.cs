@@ -17,4 +17,7 @@ public static class TextNormalizer
         }
         return sb.ToString();
     }
+
+    /// <summary>住所用。<see cref="Normalize"/> に加えて「丁目」を「-」に揃える（「台東4丁目」と「台東4-30-6」が互いに当たるように）。</summary>
+    public static string NormalizeAddress(string value) => Normalize(value).Replace("丁目", "-", StringComparison.Ordinal);
 }

@@ -23,7 +23,7 @@ public class GbfsParserTests
         var p17 = ports.Single(x => x.Id.StationId == "17");
         Assert.Equal(8, p17.Capacity);
         Assert.Equal("東京都台東区台東４丁目３１－１", p17.Address);
-        Assert.Equal("東京都台東区台東4丁目31-1", p17.SearchAddress);
+        Assert.Equal("東京都台東区台東4-31-1", p17.SearchAddress);
         Assert.Equal("https://www.hellocycling.jp/app/port/detail/17?referrer=odpt", p17.RentalUrl);
         Assert.Equal((false, "street_parking"), (p17.IsChargingStation, p17.ParkingType));
         Assert.Null(p17.RegionId);

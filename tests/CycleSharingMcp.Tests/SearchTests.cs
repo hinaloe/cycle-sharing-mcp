@@ -60,6 +60,19 @@ public class SearchTests
         Assert.Equal("東京都台東区台東４丁目３１－１", r.Ports[0].Address);
     }
 
+    [Theory]
+    [InlineData("台東4丁目")]
+    [InlineData("台東4-")]
+    public async Task Address_ChomeAndHyphenWritingsMatchEachOther(string query)
+    {
+        fake.Ports[Operator.HelloCycling].Add(
+            FakeFeedSource.MakePort(Operator.HelloCycling, "4760", "ファミリーマート台東四丁目店", 35.7071, 139.7776, "東京都台東区台東4-30-6"));
+
+        var r = await svc.SearchByAddressAsync(query, default);
+
+        Assert.Equal(["hellocycling:17", "hellocycling:4760"], r.Ports.Select(p => p.PortId).Order());
+    }
+
     [Fact]
     public async Task Address_NoMatch_ReturnsEmptyWithNote()
     {

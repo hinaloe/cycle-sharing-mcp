@@ -16,7 +16,7 @@ public sealed record Port(
     /// <summary><see cref="TextNormalizer.Normalize"/> 済みの名前（検索のたびに正規化しないよう解析時に作る）。</summary>
     public string SearchName { get; init; } = "";
 
-    /// <summary><see cref="TextNormalizer.Normalize"/> 済みの住所。</summary>
+    /// <summary><see cref="TextNormalizer.NormalizeAddress"/> 済みの住所。</summary>
     public string? SearchAddress { get; init; }
 }
 
