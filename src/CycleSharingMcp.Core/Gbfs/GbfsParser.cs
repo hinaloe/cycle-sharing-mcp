@@ -10,17 +10,18 @@ public static class GbfsParser
     {
         using var doc = Parse(utf8Json);
         var ports = new List<Port>();
-        foreach (var s in Array(Data(doc), "stations"))
+        foreach (var s in Objects(Data(doc), "stations"))
         {
             var id = String(s, "station_id");
-            if (id is null) continue;
+            // 座標のないポートは (0, 0) として近傍検索に紛れ込むので扱わない
+            if (id is null || Double(s, "lat") is not { } lat || Double(s, "lon") is not { } lon) continue;
             var name = String(s, "name") ?? "";
             var address = String(s, "address");
             ports.Add(new Port(
                 new PortId(op, id),
                 name,
-                Double(s, "lat") ?? 0,
-                Double(s, "lon") ?? 0,
+                lat,
+                lon,
                 // ドコモは GBFS 標準の capacity、HELLO CYCLING は標準外の vehicle_capacity（文字列）
                 Int(s, "capacity") ?? IntFromString(s, "vehicle_capacity"),
                 String(s, "region_id"),
@@ -40,7 +41,7 @@ public static class GbfsParser
     {
         using var doc = Parse(utf8Json);
         var result = new Dictionary<string, StationStatus>();
-        foreach (var s in Array(Data(doc), "stations"))
+        foreach (var s in Objects(Data(doc), "stations"))
         {
             var id = String(s, "station_id");
             if (id is null) continue;
@@ -52,12 +53,12 @@ public static class GbfsParser
                 Bool(s, "is_renting"),
                 Bool(s, "is_returning"),
                 Long(s, "last_reported"),
-                Array(s, "vehicle_types_available")
+                Objects(s, "vehicle_types_available")
                     .Select(v => (Id: String(v, "vehicle_type_id"), Count: Int(v, "count")))
                     .Where(v => v.Id is not null && v.Count is not null)
                     .Select(v => new VehicleTypeCount(v.Id!, v.Count!.Value))
                     .ToList(),
-                Array(s, "vehicle_docks_available")
+                Objects(s, "vehicle_docks_available")
                     .Where(d => Int(d, "count") is not null)
                     .Select(d => new VehicleDockCount(
                         Array(d, "vehicle_type_ids").Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToList(),
@@ -87,7 +88,7 @@ public static class GbfsParser
     public static IReadOnlyList<VehicleType> ParseVehicleTypes(ReadOnlySpan<byte> utf8Json)
     {
         using var doc = Parse(utf8Json);
-        return Array(Data(doc), "vehicle_types")
+        return Objects(Data(doc), "vehicle_types")
             .Where(v => String(v, "vehicle_type_id") is not null)
             .Select(v => new VehicleType(
                 String(v, "vehicle_type_id")!,
@@ -114,6 +115,10 @@ public static class GbfsParser
         e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Array
             ? v.EnumerateArray()
             : [];
+
+    // オブジェクトでない要素に TryGetProperty すると InvalidOperationException になるので、オブジェクトだけを返す
+    private static IEnumerable<JsonElement> Objects(JsonElement e, string name) =>
+        Array(e, name).Where(x => x.ValueKind == JsonValueKind.Object);
 
     private static string? String(JsonElement e, string name) =>
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;

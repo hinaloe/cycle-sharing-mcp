@@ -59,6 +59,8 @@ mise で入れた dotnet は `DOTNET_ROOT` を設定しないため、MCP クラ
 | HTTP で待ち受ける | `--http` | 省略時は stdio。エンドポイントは `/mcp`（Streamable HTTP） |
 | 待ち受けアドレス・ポート | `--host`（既定 `127.0.0.1`）、`--port`（既定 `8080`） | `--http` のときだけ使う |
 
+アクセストークンは、なるべく環境変数 `ODPT_ACCESS_TOKEN` で渡す。起動引数に書くと、`ps` などのプロセス一覧から同じマシンのほかのユーザーにも見えるため。
+
 ### Claude Code（stdio）
 
 ```sh

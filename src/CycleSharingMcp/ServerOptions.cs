@@ -7,6 +7,13 @@ public sealed record ServerOptions(bool Http, string Host, int Port, string? Acc
 {
     public const string AccessTokenEnvironmentVariable = "ODPT_ACCESS_TOKEN";
 
+    // record の ToString() は全項目を出すので、トークンだけ伏せる
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append($"Http = {Http}, Host = {Host}, Port = {Port}, AccessToken = {OdptOptions.Redact(AccessToken)}");
+        return true;
+    }
+
     public const string Usage = """
         使い方: cycle-sharing-mcp [--odpt-token <トークン>] [--http [--host <アドレス>] [--port <番号>]]
           --odpt-token  ODPT のアクセストークン（環境変数 ODPT_ACCESS_TOKEN でも可。省略時は公開版を使う）

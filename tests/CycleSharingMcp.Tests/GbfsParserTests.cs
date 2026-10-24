@@ -36,6 +36,30 @@ public class GbfsParserTests
     }
 
     [Fact]
+    public void StationWithoutCoordinates_IsSkipped()
+    {
+        // 座標のないポートを (0, 0) として扱うと、近傍検索で実在しない位置に出てしまう
+        var json = """{"data":{"stations":[{"station_id":"1","name":"a"},{"station_id":"2","name":"b","lat":35.0},{"station_id":"3","name":"c","lat":35.0,"lon":139.0}]}}"""u8;
+
+        Assert.Equal(["3"], GbfsParser.ParseStationInformation(json, Operator.Docomo).Select(p => p.Id.StationId));
+    }
+
+    [Fact]
+    public void NonObjectArrayElements_AreSkipped()
+    {
+        var info = """{"data":{"stations":[1,"x",null,{"station_id":"3","name":"c","lat":35.0,"lon":139.0}]}}"""u8;
+        Assert.Single(GbfsParser.ParseStationInformation(info, Operator.Docomo));
+
+        var status = """{"data":{"stations":[1,{"station_id":"3","num_bikes_available":1,"vehicle_types_available":[3,{"vehicle_type_id":"2","count":1}],"vehicle_docks_available":["x",{"vehicle_type_ids":["2"],"count":1}]}]}}"""u8;
+        var s = Assert.Single(GbfsParser.ParseStationStatus(status)).Value;
+        Assert.Single(s.VehicleTypesAvailable);
+        Assert.Single(s.VehicleDocksAvailable);
+
+        var types = """{"data":{"vehicle_types":[1,{"vehicle_type_id":"2"}]}}"""u8;
+        Assert.Single(GbfsParser.ParseVehicleTypes(types));
+    }
+
+    [Fact]
     public void Docomo_StationStatus()
     {
         var s = GbfsParser.ParseStationStatus(Fixtures.Read("docomo_station_status.json"))["5053"];

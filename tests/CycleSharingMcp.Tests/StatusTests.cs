@@ -34,6 +34,17 @@ public class StatusTests
     }
 
     [Fact]
+    public async Task Status_NullId_KeepsItsPlaceWithError()
+    {
+        var r = await svc.GetPortStatusAsync([null!, "docomo:5053"], default);
+
+        // port_id が null だと JSON から項目ごと消えるので、空文字で残す
+        Assert.Equal("", r.Ports[0].PortId);
+        Assert.NotNull(r.Ports[0].Error);
+        Assert.Equal("docomo:5053", r.Ports[1].PortId);
+    }
+
+    [Fact]
     public async Task Status_OnlyFetchesNeededOperators()
     {
         await svc.GetPortStatusAsync(["docomo:5053"], default);
