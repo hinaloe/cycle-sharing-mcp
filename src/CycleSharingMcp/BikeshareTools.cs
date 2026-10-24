@@ -24,7 +24,9 @@ public sealed class BikeshareTools(BikeshareService service)
         指定した座標から近い順に、ドコモ・バイクシェアと HELLO CYCLING のシェアサイクルのポート（駐輪場）を返す。各ポートに直線距離 distance_m（m）が付く。
         座標は WGS84（世界測地系）の 10 進度で指定する。Google Maps や駅すぱあと（gcs=wgs84）の座標はそのまま使える。
         旧日本測地系の値は東京付近で約 400 m ずれるので使わないこと。
-        空き状況（貸出可能台数など）は含まないので、必要なら port_id を get_port_status に渡す。
+        available_for を省略すると空き状況（貸出可能台数など）は含まないので、必要なら port_id を get_port_status に渡す。
+        available_for に rent を指定すると今借りられる（貸出受付中で 1 台以上ある）ポートだけ、return を指定すると今返せる（返却受付中で空き枠がある）ポートだけを近い順に返し、
+        num_bikes_available / num_docks_available を付ける。条件に合うポートが遠くにしかなければ distance_m が大きくなる。
         {PortFieldsNote}
         """)]
     public Task<PortListResponse> SearchPortsNearby(
@@ -32,8 +34,9 @@ public sealed class BikeshareTools(BikeshareService service)
         [Description("経度（WGS84、10 進度。例: 139.767125）")] double longitude,
         [Description(OperatorDescription)] string? @operator = null,
         [Description("返す件数（1〜40）")] int limit = 10,
+        [Description("rent（今借りられるポートだけ）か return（今返せるポートだけ）。省略すると空き状況を見ずに近い順")] string? available_for = null,
         CancellationToken ct = default)
-        => Run(() => service.SearchNearbyAsync(latitude, longitude, @operator, limit, ct));
+        => Run(() => service.SearchNearbyAsync(latitude, longitude, @operator, limit, available_for, ct));
 
     [McpServerTool(Name = "search_ports_by_address", ReadOnly = true, Idempotent = true)]
     [Description($"""

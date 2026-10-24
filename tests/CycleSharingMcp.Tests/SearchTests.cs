@@ -22,7 +22,7 @@ public class SearchTests
     [Fact]
     public async Task Nearby_SortsByDistanceAcrossOperators()
     {
-        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, null, 2, default);
+        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, null, 2, null, default);
         Assert.Equal(["docomo:100", "hellocycling:200"], r.Ports.Select(p => p.PortId));
         Assert.Equal(0, r.Ports[0].DistanceM);
         Assert.InRange(r.Ports[1].DistanceM!.Value, 30, 45);
@@ -31,7 +31,7 @@ public class SearchTests
     [Fact]
     public async Task Nearby_OperatorFilter_DoesNotFetchOther()
     {
-        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, "hellocycling", 10, default);
+        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, "hellocycling", 10, null, default);
         Assert.All(r.Ports, p => Assert.Equal("hellocycling", p.Operator));
         Assert.False(fake.Calls.ContainsKey((Operator.Docomo, "station_information")));
     }
@@ -40,12 +40,61 @@ public class SearchTests
     [InlineData(0)]
     [InlineData(41)]
     public async Task Nearby_LimitOutOfRange_Throws(int limit)
-        => await Assert.ThrowsAsync<BikeshareException>(() => svc.SearchNearbyAsync(35.6, 139.7, null, limit, default));
+        => await Assert.ThrowsAsync<BikeshareException>(() => svc.SearchNearbyAsync(35.6, 139.7, null, limit, null, default));
+
+    [Fact]
+    public async Task Nearby_WithoutAvailableFor_HasNoCounts()
+    {
+        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, null, 2, null, default);
+        Assert.All(r.Ports, p => Assert.Null(p.NumBikesAvailable));
+        Assert.False(fake.Calls.ContainsKey((Operator.Docomo, "station_status")));
+    }
+
+    [Theory]
+    [InlineData("rent")]
+    [InlineData(" Rent ")]
+    public async Task Nearby_AvailableForRent_SkipsEmptyClosedAndUnknown(string availableFor)
+    {
+        // docomo:100 は 0 台、hellocycling:200 は貸出停止中、hellocycling:17 は 3 台、docomo:5053 と hellocycling:300 は状態なし
+        SetStatus(Operator.Docomo, "100", bikes: 0, docks: 5);
+        SetStatus(Operator.HelloCycling, "200", bikes: 3, docks: 5, renting: false);
+        SetStatus(Operator.HelloCycling, "17", bikes: 3, docks: 2);
+
+        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, null, 10, availableFor, default);
+
+        var port = Assert.Single(r.Ports);
+        Assert.Equal(("hellocycling:17", 3, 2), (port.PortId, port.NumBikesAvailable, port.NumDocksAvailable));
+        Assert.NotNull(port.DistanceM);
+    }
+
+    [Fact]
+    public async Task Nearby_AvailableForReturn_SkipsFullAndClosed()
+    {
+        SetStatus(Operator.Docomo, "100", bikes: 5, docks: 0);
+        SetStatus(Operator.HelloCycling, "200", bikes: 0, docks: 5, returning: false);
+        SetStatus(Operator.HelloCycling, "17", bikes: 0, docks: 4);
+
+        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, null, 10, "return", default);
+
+        Assert.Equal(["hellocycling:17"], r.Ports.Select(p => p.PortId));
+    }
+
+    [Fact]
+    public async Task Nearby_AvailableFor_NoneFound_ReturnsNote()
+    {
+        var r = await svc.SearchNearbyAsync(35.6457, 139.8268, null, 10, "rent", default);
+        Assert.Empty(r.Ports);
+        Assert.NotNull(r.Note);
+    }
+
+    [Fact]
+    public async Task Nearby_AvailableFor_Invalid_Throws()
+        => await Assert.ThrowsAsync<BikeshareException>(() => svc.SearchNearbyAsync(35.6, 139.7, null, 10, "borrow", default));
 
     [Fact]
     public async Task Nearby_SwappedLatLon_Throws()
     {
-        var ex = await Assert.ThrowsAsync<BikeshareException>(() => svc.SearchNearbyAsync(139.7, 35.6, null, 10, default));
+        var ex = await Assert.ThrowsAsync<BikeshareException>(() => svc.SearchNearbyAsync(139.7, 35.6, null, 10, null, default));
         Assert.Contains("緯度", ex.Message);
         Assert.Contains("取り違え", ex.Message);
     }
@@ -146,6 +195,9 @@ public class SearchTests
     [InlineData(41)]
     public async Task Name_LimitOutOfRange_Throws(int limit)
         => await Assert.ThrowsAsync<BikeshareException>(() => svc.SearchByNameAsync("新木場", null, limit, default));
+
+    private void SetStatus(Operator op, string id, int bikes, int docks, bool renting = true, bool returning = true)
+        => fake.Statuses[op][id] = new Core.Gbfs.StationStatus(id, bikes, docks, true, renting, returning, 1792839002, [], []);
 
     private static BikeshareService WithMarunouchi(int count)
     {

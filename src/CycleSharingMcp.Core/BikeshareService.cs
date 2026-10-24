@@ -9,23 +9,69 @@ public sealed class BikeshareService(IFeedSource feeds)
     /// <summary>住所検索が多すぎるときにエラーへ載せる絞り込み候補の数。</summary>
     private const int MaxCandidates = 20;
 
-    public async Task<PortListResponse> SearchNearbyAsync(double latitude, double longitude, string? @operator, int limit, CancellationToken ct)
+    /// <param name="availableFor">
+    /// null なら空き状況を見ずに近い順。"rent" なら今借りられる（貸出受付中で 1 台以上）、
+    /// "return" なら今返せる（返却受付中で空き枠 1 以上）ポートだけにし、台数・空き枠を付ける。
+    /// </param>
+    public async Task<PortListResponse> SearchNearbyAsync(
+        double latitude, double longitude, string? @operator, int limit, string? availableFor, CancellationToken ct)
     {
         if (latitude is < -90 or > 90 || double.IsNaN(latitude))
             throw new BikeshareException("緯度（latitude）は -90〜90 で指定してください。緯度と経度を取り違えていませんか（日本付近は緯度 20〜46、経度 122〜154）。");
         if (longitude is < -180 or > 180 || double.IsNaN(longitude))
             throw new BikeshareException("経度（longitude）は -180〜180 で指定してください。");
         CheckLimit(limit);
+        var op = OperatorExtensions.ParseOptional(@operator);
+        var purpose = ParseAvailableFor(availableFor);
 
-        var ports = await GetPortsAsync(OperatorExtensions.ParseOptional(@operator), ct);
-        var nearest = ports
+        var ports = await GetPortsAsync(op, ct);
+        var byDistance = ports
             .Select(p => (Port: p, Distance: GeoMath.DistanceMeters(latitude, longitude, p.Lat, p.Lon)))
-            .OrderBy(x => x.Distance)
+            .OrderBy(x => x.Distance);
+
+        if (purpose is null)
+        {
+            var nearest = byDistance
+                .Take(limit)
+                .Select(x => PortView.From(x.Port, distanceM: (int)Math.Round(x.Distance)))
+                .ToList();
+            return new PortListResponse(nearest, nearest.Count == 0 ? "ポートがありません。" : null);
+        }
+
+        var statuses = new Dictionary<Operator, IReadOnlyDictionary<string, StationStatus>>();
+        foreach (var o in op is { } single ? [single] : OperatorExtensions.All)
+            statuses[o] = await feeds.GetStatusesAsync(o, ct);
+
+        var usable = byDistance
+            .Select(x => (x.Port, x.Distance, Status: statuses[x.Port.Id.Operator].GetValueOrDefault(x.Port.Id.StationId)))
+            .Where(x => x.Status is { } s && s.IsInstalled != false && (purpose == Purpose.Rent
+                ? s.IsRenting == true && s.NumBikesAvailable > 0
+                : s.IsReturning == true && s.NumDocksAvailable > 0))
             .Take(limit)
-            .Select(x => PortView.From(x.Port, distanceM: (int)Math.Round(x.Distance)))
+            .Select(x => PortView.From(x.Port, distanceM: (int)Math.Round(x.Distance)) with
+            {
+                NumBikesAvailable = x.Status!.NumBikesAvailable,
+                NumDocksAvailable = x.Status.NumDocksAvailable,
+            })
             .ToList();
-        return new PortListResponse(nearest, nearest.Count == 0 ? "ポートがありません。" : null);
+        return new PortListResponse(usable, usable.Count == 0
+            ? $"今{(purpose == Purpose.Rent ? "借りられる" : "返せる")}ポートが見つかりません。"
+            : null);
     }
+
+    private enum Purpose
+    {
+        Rent,
+        Return,
+    }
+
+    private static Purpose? ParseAvailableFor(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        null or "" => null,
+        "rent" => Purpose.Rent,
+        "return" => Purpose.Return,
+        _ => throw new BikeshareException($"available_for「{value}」は指定できません。rent（今借りられる）か return（今返せる）を指定するか、省略してください。"),
+    };
 
     /// <summary>HELLO CYCLING 専用（ドコモ・バイクシェアのデータには住所がない）。</summary>
     public async Task<PortListResponse> SearchByAddressAsync(string address, CancellationToken ct)

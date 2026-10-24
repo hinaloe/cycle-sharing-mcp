@@ -17,7 +17,9 @@ public sealed record PortView(
     string? ParkingType,
     string? RentalUrl,
     int? DistanceM = null,
-    int? EditDistance = null)
+    int? EditDistance = null,
+    int? NumBikesAvailable = null,
+    int? NumDocksAvailable = null)
 {
     public static PortView From(Port p, int? distanceM = null, int? editDistance = null) => new(
         p.Id.ToString(),

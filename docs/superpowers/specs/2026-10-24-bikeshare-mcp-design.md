@@ -13,7 +13,7 @@
 - 座標から最寄りのポートを、件数を指定して返せる（上限 40 件）。
 - HELLO CYCLING のポートを住所の部分一致で探せる（最大 40 件、超えたらエラー）。
 - 両事業者のポートを名前のあいまい検索で数件に絞れる。
-- ポートのリアルタイム状態（貸出可能台数・返却可能数など）を **ポート ID からのみ** 引ける。
+- ポートのリアルタイム状態（貸出可能台数・返却可能数など）は、ポート ID から引くのを基本とする（例外は近傍検索の `available_for`）。
 - ODPT のアクセストークンが起動時に渡されればトークン付きの API を、なければ公開版を使う。
 - stdio と HTTP（Streamable HTTP）の両方で動く。
 
@@ -80,7 +80,7 @@ README に記載し、`get_operator_info` の応答にも含める。
 - ドコモのみ: `region_id`
 - HELLO CYCLING のみ: `address`, `is_charging_station`, `parking_type`, `rental_url`（`rental_uris.web`）
 
-リアルタイム状態は含めない（`get_port_status` で引く）。
+リアルタイム状態は含めない（`get_port_status` で引く）。例外は `search_ports_nearby` で `available_for` を指定したときで、台数・空き枠を付ける。
 
 `capacity` について（実装者判断として設計時に決めたもの）: HELLO CYCLING の `station_information` には GBFS 標準の `capacity` がなく、標準外の `vehicle_capacity` が文字列（例: `"8"`）で入っている。
 これを整数にして `capacity` に入れる。ただし HELLO CYCLING では約 28% のポートで `num_bikes_available + num_docks_available` が `vehicle_capacity` より小さい。
@@ -97,8 +97,11 @@ README に記載し、`get_operator_info` の応答にも含める。
 | `latitude` / `longitude` | 必須 | WGS84 の 10 進度。説明文に「旧日本測地系の値は不可（東京付近で約 400 m ずれる）」と書く |
 | `operator` | 両方 | `docomo` / `hellocycling` で絞る |
 | `limit` | 10 | 1〜40。範囲外はエラー |
+| `available_for` | なし | `rent`（今借りられるポートだけ）か `return`（今返せるポートだけ） |
 
 各ポートに直線距離 `distance_m`（整数 m）を付ける。
+
+`available_for` に `rent` を指定すると、今借りられる（`is_renting` が true で `num_bikes_available` が 1 以上）ポートだけ、`return` を指定すると、今返せる（`is_returning` が true で `num_docks_available` が 1 以上）ポートだけを近い順に返し、`num_bikes_available` / `num_docks_available` を付ける。状態が配信されていないポートと `is_installed` が false のポートは外す。省略時は空き状況を見ない。
 
 ### `search_ports_by_address`
 
@@ -135,7 +138,7 @@ HELLO CYCLING 専用。住所の部分一致。
 
 ### `get_port_status`
 
-ポート ID からリアルタイム状態を返す。リアルタイム状態を引く手段はこれだけ。
+ポート ID からリアルタイム状態を返す（近傍検索の `available_for` でも台数・空き枠だけは付く）。
 
 | 引数 | 既定 | 内容 |
 |---|---|---|
