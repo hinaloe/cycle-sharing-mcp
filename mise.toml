@@ -1,0 +1,18 @@
+[tools]
+dotnet = "10.0.402"
+# GitHub Actions のアクションをコミット SHA に固定する（pinact run）
+pinact = "5.0.1"
+
+[tasks.build]
+run = "dotnet build -c Release"
+
+[tasks.test]
+run = "dotnet test"
+
+[tasks.run]
+description = "MCP サーバーを stdio で起動"
+run = "dotnet run --project src/CycleSharingMcp -c Release --no-launch-profile"
+
+[tasks.publish]
+description = "このマシン向けの自己完結型単一バイナリを ./dist に出力（.NET ランタイム不要）"
+run = "dotnet publish src/CycleSharingMcp -c Release --use-current-runtime --self-contained -p:PublishSingleFile=true -o dist"

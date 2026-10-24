@@ -1,0 +1,5 @@
+{"ttl":60,"data":{"stations":[
+{"is_renting":true,"station_id":"17","is_installed":true,"is_returning":true,"last_reported":1792839002,"num_bikes_available":2,"num_docks_available":6,"vehicle_docks_available":[{"count":6,"vehicle_type_ids":["2"]}],"vehicle_types_available":[{"count":2,"vehicle_type_id":"2"}]},
+{"is_renting":true,"station_id":"200","is_installed":true,"is_returning":true,"last_reported":1792839002,"num_bikes_available":3,"num_docks_available":7,"vehicle_docks_available":[{"count":7,"vehicle_type_ids":["2"]}],"vehicle_types_available":[{"count":3,"vehicle_type_id":"2"}]},
+{"is_renting":false,"station_id":"300","is_installed":true,"is_returning":true,"last_reported":1792839002,"num_bikes_available":0,"num_docks_available":5,"vehicle_docks_available":[{"count":5,"vehicle_type_ids":["2"]}],"vehicle_types_available":[{"count":0,"vehicle_type_id":"2"}]}
+]},"version":"2.3","last_updated":1792839046}

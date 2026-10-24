@@ -1,0 +1,5 @@
+{"ttl":60,"data":{"stations":[
+{"lat":35.707252,"lon":139.777587,"name":"新御徒町ステーション","address":"東京都台東区台東４丁目３１－１","station_id":"17","rental_uris":{"ios":"https://www.hellocycling.jp/app/port/detail/17?referrer=odpt","web":"https://www.hellocycling.jp/app/port/detail/17?referrer=odpt","android":"https://www.hellocycling.jp/app/port/detail/17?referrer=odpt"},"parking_hoop":false,"parking_type":"street_parking","contact_phone":"+8105038218282","vehicle_capacity":"8","is_charging_station":false},
+{"lat":35.646,"lon":139.827,"name":"新木場駅前","address":"東京都江東区新木場１丁目５－１","station_id":"200","rental_uris":{"ios":"https://www.hellocycling.jp/app/port/detail/200?referrer=odpt","web":"https://www.hellocycling.jp/app/port/detail/200?referrer=odpt","android":"https://www.hellocycling.jp/app/port/detail/200?referrer=odpt"},"parking_hoop":false,"parking_type":"street_parking","contact_phone":"+8105038218282","vehicle_capacity":"10","is_charging_station":false},
+{"lat":35.664,"lon":139.701,"name":"シブヤ公園ポート","station_id":"300","parking_hoop":false,"parking_type":"street_parking","vehicle_capacity":"不明","is_charging_station":true}
+]},"version":"2.3","last_updated":1792839046}

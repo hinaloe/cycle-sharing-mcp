@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CycleSharingMcp.Core/CycleSharingMcp.Core.csproj" />
+    <Project Path="src/CycleSharingMcp/CycleSharingMcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CycleSharingMcp.Tests/CycleSharingMcp.Tests.csproj" />
+  </Folder>
+</Solution>

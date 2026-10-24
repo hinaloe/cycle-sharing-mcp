@@ -13,7 +13,7 @@
 - 座標から最寄りのポートを、件数を指定して返せる（上限 40 件）。
 - HELLO CYCLING のポートを住所の部分一致で探せる（最大 40 件、超えたらエラー）。
 - 両事業者のポートを名前のあいまい検索で数件に絞れる。
-- ポートのリアルタイム状態（貸出可能台数・返却可能数など）を **ポート ID からのみ** 引ける。
+- ポートのリアルタイム状態（貸出可能台数・返却可能数など）は、ポート ID から引くのを基本とする（例外は近傍検索の `available_for`）。
 - ODPT のアクセストークンが起動時に渡されればトークン付きの API を、なければ公開版を使う。
 - stdio と HTTP（Streamable HTTP）の両方で動く。
 
@@ -80,12 +80,13 @@ README に記載し、`get_operator_info` の応答にも含める。
 - ドコモのみ: `region_id`
 - HELLO CYCLING のみ: `address`, `is_charging_station`, `parking_type`, `rental_url`（`rental_uris.web`）
 
-リアルタイム状態は含めない（`get_port_status` で引く）。
+リアルタイム状態は含めない（`get_port_status` で引く）。例外は `search_ports_nearby` で `available_for` を指定したときで、台数・空き枠を付ける。
 
 `capacity` について（実装者判断として設計時に決めたもの）: HELLO CYCLING の `station_information` には GBFS 標準の `capacity` がなく、標準外の `vehicle_capacity` が文字列（例: `"8"`）で入っている。
-これを整数にして `capacity` に入れる。ただし HELLO CYCLING では約 28% のポートで `num_bikes_available + num_docks_available` が `vehicle_capacity` より小さい（ドコモは全件一致）。
+これを整数にして `capacity` に入れる。ただし HELLO CYCLING では約 28% のポートで `num_bikes_available + num_docks_available` が `vehicle_capacity` より小さい。
 電池切れなどで使えない車両・枠が数えられていない差と思われる（HELLO CYCLING の `station_status` には `num_bikes_disabled` / `num_docks_disabled` がない）。
-ツール説明に「HELLO CYCLING の capacity は設置上の収容数で、使えない車両・枠を含むため、貸出可能台数と返却可能数の合計より大きいことがある」と書く。
+ドコモ・バイクシェアの `capacity` も、0 のポート（2026-10-25 時点で約 6,200 件中 360 件）や、その合計と合わないポート（同 434 件）がある。
+ツール説明には「capacity は目安で、空きの判断には get_port_status の台数を見ること」と、事業者ごとの上記のずれを書く。
 
 ### `search_ports_nearby`
 
@@ -96,8 +97,11 @@ README に記載し、`get_operator_info` の応答にも含める。
 | `latitude` / `longitude` | 必須 | WGS84 の 10 進度。説明文に「旧日本測地系の値は不可（東京付近で約 400 m ずれる）」と書く |
 | `operator` | 両方 | `docomo` / `hellocycling` で絞る |
 | `limit` | 10 | 1〜40。範囲外はエラー |
+| `available_for` | なし | `rent`（今借りられるポートだけ）か `return`（今返せるポートだけ） |
 
 各ポートに直線距離 `distance_m`（整数 m）を付ける。
+
+`available_for` に `rent` を指定すると、今借りられる（`is_renting` が true で `num_bikes_available` が 1 以上）ポートだけ、`return` を指定すると、今返せる（`is_returning` が true で `num_docks_available` が 1 以上）ポートだけを近い順に返し、`num_bikes_available` / `num_docks_available` を付ける。状態が配信されていないポートと `is_installed` が false のポートは外す。省略時は空き状況を見ない。
 
 ### `search_ports_by_address`
 
@@ -109,6 +113,7 @@ HELLO CYCLING 専用。住所の部分一致。
 
 - 比較前に両方へ正規化をかける（下記「文字列の正規化」）。
 - 一致が 40 件を超えたらエラー。メッセージに一致件数を入れ、もっと詳しい住所で絞るよう促す。
+  - あわせて、そのまま検索語に使える絞り込み候補を件数の多い順に 20 件まで示す。住所は解析せず、一致した住所の「検索語の後に続く文字」でまとめ、40 件を超えるまとまりは 1 文字先で分け直し、各まとまりはその全住所に共通する続きまで伸ばす。町名の区切りとは限らないが、候補で検索すれば 40 件以内に収まる。
 - 0 件なら空配列と、その旨の `note` を返す。
 - 並び順は住所の文字列順。
 
@@ -133,7 +138,7 @@ HELLO CYCLING 専用。住所の部分一致。
 
 ### `get_port_status`
 
-ポート ID からリアルタイム状態を返す。リアルタイム状態を引く手段はこれだけ。
+ポート ID からリアルタイム状態を返す（近傍検索の `available_for` でも台数・空き枠だけは付く）。
 
 | 引数 | 既定 | 内容 |
 |---|---|---|
@@ -144,7 +149,7 @@ HELLO CYCLING 専用。住所の部分一致。
 - `port_id`, `name`
 - `num_bikes_available`, `num_docks_available`
 - `is_installed`, `is_renting`, `is_returning`
-- `last_reported`（日本時間 `yyyy-MM-dd HH:mm:ss`）
+- `last_reported`（日本時間の ISO 8601、時差付き。例: `2026-10-24T19:54:36+09:00`）
 - HELLO CYCLING のみ: 車種別の貸出可能台数・返却可能数（`vehicle_type_id` を `vehicle_types` の名前・`propulsion_type` に置き換えて返す）。
   返却可能数（`vehicle_docks_available`）は GBFS では複数の車種 ID をまとめた単位で返るので、その単位のまま返す（2026-10 時点で車種は電動アシスト自転車の 1 種類のみ）。
 
@@ -165,6 +170,12 @@ HELLO CYCLING 専用。住所の部分一致。
 - Unicode 正規化 NFKC。
 - 全角/半角、ひらがな/カタカナ、大文字/小文字を区別しない（ICU の `CompareOptions.IgnoreWidth | IgnoreKanaType | IgnoreCase` 相当。実装は比較前の文字列変換でも `CompareInfo` でもよい）。
 - 空白は除いて比べる。
+- 住所検索だけは、さらに番地の書き方を揃える。
+  - 「丁目」の直前の漢数字（一〜九十九）を算用数字にする（「銀座一丁目」→「銀座1丁目」）。「八丁堀」のように「丁目」が続かないものは変えない。
+  - 「丁目」を「-」にする（「台東4丁目」と「台東4-30-6」が互いに当たるように）。
+  - ハイフン・ダッシュ類とマイナス記号（− ‐ — ― など）は前後を問わず「-」にする。実データでは「中央2丁目14−C」「20番地−4」のように数字以外と隣り合うものもある。
+  - 長音記号「ー」は、ひらがな・カタカナ（長音記号自身を含む）の後ろにないものだけ「-」にする（「4ー2ー1」「4丁目ー26」）。カタカナ語の「ー」（「センター」「ドーム」）は変えない。
+  - ソフトハイフン（U+00AD）は除き、続いた「-」は 1 つにする。
 - そのため `InvariantGlobalization` は `false` のまま（参考実装と同じ）。
 
 ## 起動と設定
