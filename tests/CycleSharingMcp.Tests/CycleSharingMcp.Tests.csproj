@@ -8,6 +8,8 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <IsPackable>false</IsPackable>
     <RootNamespace>CycleSharingMcp.Tests</RootNamespace>
+    <!-- 偽の取得元を使うテストは即座に終わるので、TestContext のキャンセルトークンは渡さない -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
