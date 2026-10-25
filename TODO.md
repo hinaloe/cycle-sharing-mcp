@@ -1,19 +1,16 @@
 # TODO
 
-## Cloudflare Workers 対応
+## Cloudflare Workers 版
 
-- 候補: [nenoNaninu/cloudflare-workers-dotnet](https://github.com/nenoNaninu/cloudflare-workers-dotnet)（`Cloudflare.Workers.Hosting`）。C# を NativeAOT-LLVM で WASM にして Workers で動かす。
-- 追加するのは「フィードの取得とキャッシュ」（`IFeedSource` の実装）と「MCP の受け口」だけ。検索・状態・事業者情報は `src/CycleSharingMcp.Core` の `BikeshareService` をそのまま使う。
-  - コアは ASP.NET Core・`Microsoft.Extensions.Hosting`・MCP SDK を参照せず、`Task.Run`・スレッド・`Task.Delay` も使わない。この制約は守り続ける。
-  - 応答は record なので、WASM（トリミングあり）では JSON ソース生成（`JsonSerializerContext`）に載せる。
-- 制約:
-  - ASP.NET Core ではないので `ModelContextProtocol.AspNetCore` は使えず、MCP SDK 本体も動く見込みが薄い。MCP の JSON-RPC（`initialize` / `tools/list` / `tools/call`、Streamable HTTP）を手で書く必要がありそう。
-  - シングルスレッドで、`Task.Run` / `Task.Delay` / `Thread.Sleep` は使えない。
-  - 外向きの HTTP は `HttpClient` + `FetchHttpMessageHandler`。
-  - 正規化（`string.Normalize`）が WASM で ICU なしに動くか確かめる。
-- 依存:
-  - 実験版の `Microsoft.DotNet.ILCompiler.LLVM`（dotnet-experimental のフィードを足した `nuget.config` が必要）。
-  - WASI SDK（`WASI_SDK_PATH`）。
-  - wrangler。wrangler など Workers 関連のツールも mise に追加する。
-- データの重さ: HELLO CYCLING の `station_information`（約 8 MB、約 15,600 ポート）をリクエストのたびに WASM で解析すると、CPU 時間（無料プランは 10 ms）やメモリ（128 MB）の制限に掛かるおそれがある。
-  Scheduled Handler で定期的に軽い形へ変換して KV に置く、などの仕組みが要る。
+Workers 版（`src/CycleSharingMcp.Workers`）は、手元の `wrangler dev` と CI での確認まで。残っていること:
+
+- 本番の Workers で動かして確かめる（有料プラン）。
+  - メモリ: HELLO CYCLING の `station_information`（約 8 MB、約 15,600 ポート）の解析中に約 51 MB を使う（手元の計測）。取得した本文が JavaScript 側にも残ることや、TTL が切れて取り直すときに古いデータと新しいデータが同時に残ることを考えると、上限 128 MB に対して余裕は大きくない。
+  - CPU 時間: 初回の取得・解析で 1 秒前後（手元の計測）。
+  - Claude.ai・ChatGPT・Notion などのコネクタから実際に使えるか。
+- 上限に掛かった場合の対策（そのときに決める）:
+  - コアの `Port` を軽くする（検索用の正規化済み文字列を持たないなど）。
+  - 事業者ごとに必要になってから読み込む。
+  - Scheduled Handler（Cron）で定期的に軽い形へ変換し、KV などに置く。
+- WebAssembly が 13 MB（gzip 3.6 MB）ある。起動を速くしたくなったら、何が大きいかを調べて削る。
+- `Microsoft.DotNet.ILCompiler.LLVM` は dotnet-experimental フィードの実験版で、macOS 向けが配信されていない。正式版が出たら乗り換える。
