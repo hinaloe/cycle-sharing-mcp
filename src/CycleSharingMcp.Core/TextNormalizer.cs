@@ -6,10 +6,16 @@ namespace CycleSharingMcp.Core;
 /// <summary>住所検索・名前検索で比べる前に両方へかける正規化。</summary>
 public static partial class TextNormalizer
 {
+    /// <summary>
+    /// NFKC。既定は <see cref="string.Normalize(NormalizationForm)"/>。WebAssembly では .NET の NFKC が使えないので、
+    /// 実行環境が起動時に 1 度だけ差し替える（Workers 版はホストの JavaScript の normalize を使う）。
+    /// </summary>
+    public static Func<string, string> Compatibility { get; set; } = static s => s.Normalize(NormalizationForm.FormKC);
+
     /// <summary>NFKC（全角英数・半角カナを揃える）→ 空白を除く → カタカナをひらがなに → 小文字に。</summary>
     public static string Normalize(string value)
     {
-        var nfkc = value.Normalize(NormalizationForm.FormKC);
+        var nfkc = Compatibility(value);
         var sb = new StringBuilder(nfkc.Length);
         foreach (var c in nfkc)
         {
