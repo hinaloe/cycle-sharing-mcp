@@ -31,16 +31,17 @@ public sealed class OdptFeedSource : IFeedSource
     private readonly Dictionary<Operator, FeedCache<SystemInformation>> systemInformations = [];
     private readonly Dictionary<Operator, FeedCache<IReadOnlyList<VehicleType>>> vehicleTypes = [];
 
-    public OdptFeedSource(HttpClient http, OdptOptions options, TimeProvider time)
+    /// <param name="waitForOthers">他の呼び出しが始めた取得の待ち方（<see cref="FeedCache{T}"/> を参照）。Workers 版が差し込む。</param>
+    public OdptFeedSource(HttpClient http, OdptOptions options, TimeProvider time, Func<Task, CancellationToken, Task>? waitForOthers = null)
     {
         this.http = http;
         accessToken = options.AccessToken;
         foreach (var op in OperatorExtensions.All)
         {
-            ports[op] = new(InformationTtl, time);
-            statuses[op] = new(StatusTtl, time);
-            systemInformations[op] = new(InformationTtl, time);
-            vehicleTypes[op] = new(InformationTtl, time);
+            ports[op] = new(InformationTtl, time, waitForOthers);
+            statuses[op] = new(StatusTtl, time, waitForOthers);
+            systemInformations[op] = new(InformationTtl, time, waitForOthers);
+            vehicleTypes[op] = new(InformationTtl, time, waitForOthers);
         }
     }
 

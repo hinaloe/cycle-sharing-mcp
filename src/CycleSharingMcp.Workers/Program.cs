@@ -9,14 +9,19 @@ TextNormalizer.Compatibility = JsNormalizer.Nfkc;
 
 var builder = WorkerApplication.CreateBuilder();
 
-builder.MapPost("/mcp", static async context =>
+builder.Map("/mcp", static async context =>
 {
+    // セッションを持たないので、POST 以外（GET の SSE ストリーム、DELETE のセッション終了など）には対応しない
+    if (context.Request.Method != "POST")
+    {
+        var notAllowed = HttpResponse.Text("MCP は POST /mcp で JSON-RPC を送ってください。", 405);
+        notAllowed.Headers.Replace("Allow", "POST");
+        return notAllowed;
+    }
+
     var result = await Services.Mcp.HandleAsync(await context.Request.ReadAsStringAsync(), CancellationToken.None);
     return result.Json is null ? HttpResponse.Accepted() : HttpResponse.Json(result.Json, result.StatusCode);
 });
-
-// セッションを持たないので、GET（SSE のストリーム）と DELETE（セッションの終了）には対応しない
-builder.MapGet("/mcp", static _ => Task.FromResult(HttpResponse.Text("MCP は POST /mcp で JSON-RPC を送ってください。", 405)));
 
 builder.MapGet("/", static _ => Task.FromResult(HttpResponse.Text(
     "cycle-sharing-mcp: ドコモ・バイクシェアと HELLO CYCLING のポートと空き状況を調べる MCP サーバー。エンドポイントは POST /mcp")));
@@ -47,5 +52,26 @@ internal static class Services
     private static readonly HttpClient Http = new(new FetchHttpMessageHandler()) { Timeout = Timeout.InfiniteTimeSpan };
 
     // 誰でも呼べる公開 URL なので、ODPT のアクセストークンは使わず公開版だけを使う
-    public static readonly McpHttpHandler Mcp = new(new BikeshareService(new OdptFeedSource(Http, new OdptOptions(null), TimeProvider.System)));
+    public static readonly McpHttpHandler Mcp = new(new BikeshareService(
+        new OdptFeedSource(Http, new OdptOptions(null), TimeProvider.System, WaitForOthersAsync)));
+
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(25);
+    private static readonly TimeSpan MaxWait = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// 他のリクエストが始めた取得の完了を、自分のタイマーで少しずつ確かめながら待つ。
+    /// 別のリクエストの I/O だけを待つと、Workers は「ハング」とみなしてリクエストを打ち切るため。
+    /// 取得を始めたリクエストが取り消されて取得が終わらない場合に備えて、待つのは最大 60 秒まで。
+    /// </summary>
+    private static async Task WaitForOthersAsync(Task load, CancellationToken ct)
+    {
+        var started = TimeProvider.System.GetTimestamp();
+        while (!load.IsCompleted)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (TimeProvider.System.GetElapsedTime(started) > MaxWait)
+                throw new BikeshareException("ODPT からのデータ取得を待ちきれませんでした。少し待ってからやり直してください。");
+            await WorkerTimer.Delay(PollInterval);
+        }
+    }
 }
