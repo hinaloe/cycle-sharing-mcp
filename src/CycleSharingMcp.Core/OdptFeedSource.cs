@@ -1,9 +1,8 @@
 using System.Net;
 using System.Text.Json;
-using CycleSharingMcp.Core;
 using CycleSharingMcp.Core.Gbfs;
 
-namespace CycleSharingMcp;
+namespace CycleSharingMcp.Core;
 
 public sealed record OdptOptions(string? AccessToken)
 {
@@ -14,7 +13,7 @@ public sealed record OdptOptions(string? AccessToken)
         return true;
     }
 
-    internal static string Redact(string? secret) => secret is null ? "(なし)" : "***";
+    public static string Redact(string? secret) => secret is null ? "(なし)" : "***";
 }
 
 /// <summary>ODPT から GBFS フィードを取得し、メモリにキャッシュする。</summary>

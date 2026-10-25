@@ -1,4 +1,4 @@
-namespace CycleSharingMcp;
+namespace CycleSharingMcp.Core;
 
 /// <summary>
 /// 1 つのフィードの取得結果を TTL の間だけ使い回す。取得中の呼び出しは同じ取得を待つ（HELLO CYCLING の 8 MB を同時に何本も取りに行かない）。
