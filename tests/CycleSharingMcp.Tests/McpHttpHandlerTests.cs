@@ -119,6 +119,34 @@ public class McpHttpHandlerTests
     }
 
     [Fact]
+    public async Task DuplicateKeys_AreParseError()
+    {
+        var result = await handler.HandleAsync("""{"jsonrpc":"2.0","id":1,"id":2,"method":"ping"}""", default);
+
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal(-32700, (int)JsonNode.Parse(result.Json!)!["error"]!["code"]!);
+    }
+
+    [Fact]
+    public async Task ToolsCall_UnexpectedException_IsToolErrorWithoutDetails()
+    {
+        // 取得元が想定外の例外を投げる（BikeshareException ではない）
+        var broken = FakeFeedSource.FromFixtures();
+        broken.Ports.Remove(Operator.Docomo);
+        var brokenHandler = new McpHttpHandler(new BikeshareService(broken));
+
+        var result = await brokenHandler.HandleAsync(
+            """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_ports_by_name","arguments":{"query":"新木場","operator":"docomo"}}}""",
+            default);
+
+        Assert.Equal(200, result.StatusCode);
+        var json = JsonNode.Parse(result.Json!)!;
+        Assert.True((bool)json["result"]!["isError"]!);
+        Assert.Contains("内部エラー", Text(json));
+        Assert.DoesNotContain("KeyNotFound", Text(json)); // 例外の型やスタックは出さない
+    }
+
+    [Fact]
     public async Task UnknownMethod_IsMethodNotFound()
     {
         var (_, json) = await Call("resources/list", null, id: "7");

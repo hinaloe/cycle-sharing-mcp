@@ -33,18 +33,20 @@ public sealed class McpHttpHandler(BikeshareService service)
 
     public async Task<McpHttpResult> HandleAsync(string body, CancellationToken ct)
     {
-        JsonNode? node;
+        JsonObject request;
         try
         {
-            node = JsonNode.Parse(body);
+            if (JsonNode.Parse(body) is not JsonObject parsed)
+                return Error(400, null, -32600, "JSON-RPC のリクエストはオブジェクトで送ってください（バッチには対応していません）。");
+            // JsonObject は中身を遅れて読むので、キーの重複（ArgumentException）はここで表に出しておく
+            _ = parsed.Count;
+            request = parsed;
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
         {
             return Error(400, null, -32700, "JSON として読めません。");
         }
 
-        if (node is not JsonObject request)
-            return Error(400, null, -32600, "JSON-RPC のリクエストはオブジェクトで送ってください（バッチには対応していません）。");
         var id = request["id"]?.DeepClone();
         if (!IsString(request["jsonrpc"], "2.0") || request["method"] is not JsonValue methodValue
             || methodValue.GetValueKind() != JsonValueKind.String)
@@ -53,15 +55,23 @@ public sealed class McpHttpHandler(BikeshareService service)
         // id のないものは通知なので、本文なしで受け付ける
         if (!request.ContainsKey("id")) return new McpHttpResult(202, null);
 
-        var @params = request["params"] as JsonObject;
-        return methodValue.GetValue<string>() switch
+        try
         {
-            "initialize" => Result(id, Initialize(@params)),
-            "ping" => Result(id, new JsonObject()),
-            "tools/list" => Result(id, new JsonObject { ["tools"] = JsonNode.Parse(ToolDefinitions.Json) }),
-            "tools/call" => await CallToolAsync(id, @params, ct),
-            var method => Error(200, id, -32601, $"メソッド「{method}」には対応していません。"),
-        };
+            var @params = request["params"] as JsonObject;
+            return methodValue.GetValue<string>() switch
+            {
+                "initialize" => Result(id, Initialize(@params)),
+                "ping" => Result(id, new JsonObject()),
+                "tools/list" => Result(id, new JsonObject { ["tools"] = JsonNode.Parse(ToolDefinitions.Json) }),
+                "tools/call" => await CallToolAsync(id, @params, ct),
+                var method => Error(200, id, -32601, $"メソッド「{method}」には対応していません。"),
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // 例外の型やスタック（WASM ではファイルのパスも含む）は外に出さない
+            return Error(500, id, -32603, "内部エラーが発生しました。");
+        }
     }
 
     private static JsonObject Initialize(JsonObject? @params)
@@ -102,6 +112,11 @@ public sealed class McpHttpHandler(BikeshareService service)
         catch (BikeshareException ex)
         {
             return Result(id, ToolResult(ex.Message, isError: true));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // サーバー版（MCP SDK）と同じく、想定外の例外もツールのエラーとして返す。詳細は出さない
+            return Result(id, ToolResult("ツールの実行中に内部エラーが発生しました。", isError: true));
         }
     }
 
