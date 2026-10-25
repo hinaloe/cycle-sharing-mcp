@@ -1,0 +1,8 @@
+{
+  // 環境に依存する設定（account_id・routes・バインディングの ID など）はここに書かない。
+  // デプロイするときは、自分の環境で `wrangler deploy` のオプションや環境変数で指定する。
+  "name": "cycle-sharing-mcp",
+  "main": "bin/Release/net10.0/wasi-wasm/publish/worker/index.js",
+  "compatibility_date": "2026-09-10"
+  // ビルドは mise run workers:build（scripts/workers.sh）で行う
+}

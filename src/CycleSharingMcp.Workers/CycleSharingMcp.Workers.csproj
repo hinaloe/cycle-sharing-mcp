@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Cloudflare Workers 版。WASI SDK が要るので、ビルドは scripts/workers.sh（mise run workers:build）で行う。ソリューションには入れない -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CycleSharingMcp.Workers</RootNamespace>
+
+    <!-- NativeAOT-LLVM / wasi-wasm -->
+    <RuntimeIdentifier>wasi-wasm</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <UseAppHost>false</UseAppHost>
+    <PublishTrimmed>true</PublishTrimmed>
+    <!-- ICU を入れても WebAssembly では NFKC が使えない（PlatformNotSupportedException）ので、NFKC はホストの JavaScript に任せる -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cloudflare.Workers.Hosting" Version="0.3.0" />
+    <!-- dotnet-experimental フィードの実験版。macOS 向けは配信されていないので、macOS ではコンテナでビルドする -->
+    <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-rc.1.26357.1" />
+    <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-rc.1.26357.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CycleSharingMcp.Core\CycleSharingMcp.Core.csproj" />
+  </ItemGroup>
+
+</Project>
