@@ -1,0 +1,145 @@
+[
+  {
+    "name": "get_operator_info",
+    "description": "事業者の基本情報（サービス名、Web サイト、ポート数。利用規約・プライバシーポリシー・アプリのリンクは配信している事業者のみで、\nドコモ・バイクシェアは Web サイトだけ）、HELLO CYCLING の車種、データのクレジット表示とライセンスを返す。\nデータを利用者に示すときは credit を添えること。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "description": "事業者で絞る。docomo（ドコモ・バイクシェア）か hellocycling（HELLO CYCLING）。省略すると両方",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      }
+    },
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "get_port_status",
+    "description": "ポートのリアルタイム状態（貸出可能台数 num_bikes_available、返却可能数 num_docks_available、貸出・返却ができるか、最終報告時刻）を返す。\n返却台数に上限がないポートでは、num_docks_available が 950〜1000 や 32767 のような大きな値になる。\n空き枠の数として案内せず「返却可能（台数の制限なし）」と案内すること（公式アプリでも「可能」と表示される）。\nis_installed はポートが設置されて稼働しているか（false なら撤去中・設置前）。\nlast_reported は状態が報告された日本時間。HELLO CYCLING はポートごとの時刻だが、ドコモ・バイクシェアはデータ全体の更新時刻で全ポート同じ。\nドコモ・バイクシェアには車種のデータがなく、電動アシストかどうかは分からない。\nHELLO CYCLING は車種ごとの台数も返す。vehicle_types_available は車種ごとの貸出可能台数、\nvehicle_docks_available は返却可能な空き枠を、そこへ返せる車種（vehicle_types）ごとにまとめた数（count）。データは最大 1 分前のもの。\nis_renting / is_returning が false のポート（夜間に閉まる駐輪場の営業時間外など）では、貸出・返却はできない。\nそのときも num_bikes_available / num_docks_available はその場にある実際の台数・空き枠の数が入るので、0 でなくても借りられる・返せると案内しないこと。\nポート ID は検索ツールの結果の port_id（例: docomo:5053, hellocycling:17）。最大 40 件まとめて指定できる。\nID が誤っている・見つからない要素には error が入り、他の要素は通常どおり返る。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "port_ids": {
+          "description": "ポート ID の配列（1〜40 件）。事業者が混ざってよい",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "port_ids"
+      ]
+    },
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "search_ports_by_address",
+    "description": "HELLO CYCLING のポートを住所の部分一致で探す（ドコモ・バイクシェアには住所データがないので対象外。ドコモは search_ports_by_name か search_ports_nearby を使う）。\n住所は「東京都台東区台東４丁目３１－１」「東京都台東区台東4-30-6」のように都道府県名から始まる。\n全角・半角、ひらがな・カタカナの違いは無視する。「四丁目」「4丁目」「4-」は同じものとして扱い、\n「−」「‐」などハイフンに似た記号と、仮名の後ろ以外にある「ー」も「-」とみなす。丁目以外の漢数字（「三番」など）は算用数字と区別する。\n最大 40 件。一致が 40 件を超えるとエラーになり、そのまま address に使える絞り込み候補を件数付きで示すので、それで検索し直す。\n候補は住所の続きの文字で機械的に分けたもので、町名の区切りとは限らない（同じ表記に揃えた形で示す）。\n空き状況は含まないので、必要なら port_id を get_port_status に渡す。\ncapacity（収容数）は目安で、空きの判断には使わず get_port_status の台数を見ること。HELLO CYCLING は使えない車両・枠も含む設置上の数で、貸出可能台数と返却可能数の合計より大きいことがある。ドコモ・バイクシェアは 0 のことや、その合計と合わないことがある。1000 以上（HELLO CYCLING は 1000、ドコモ・バイクシェアは 32767）は、返却台数に上限がないポートを表す。is_charging_station（HELLO CYCLING のみ）は電動サイクル（特定小型原動機付自転車）用の充電器があるポートを表し、電動アシスト自転車のバッテリーを交換・充電できるという意味ではない。region_id（ドコモ・バイクシェアのみ）は地域の番号で、地域名を引くデータはない。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "description": "住所の一部（例: 台東区台東４丁目）",
+          "type": "string"
+        }
+      },
+      "required": [
+        "address"
+      ]
+    },
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "search_ports_by_name",
+    "description": "ドコモ・バイクシェアと HELLO CYCLING のポートを名前であいまい検索し、近い順に返す。各ポートに編集距離 edit_distance（0 は完全一致）が付く。\n全角・半角、ひらがな・カタカナの違いと、多少の書き違いは吸収する。読みでは当たらない（「しんきば」で「新木場」は不可）。\nドコモ・バイクシェアのポート番号（例: H1-57）でも探せる。\nedit_distance が 0 でないものは、名前が似ているだけの別の場所のことがある（例:「銀座一丁目」で「銀座6丁目」が 1 になる）。\n空き状況は含まないので、必要なら port_id を get_port_status に渡す。\ncapacity（収容数）は目安で、空きの判断には使わず get_port_status の台数を見ること。HELLO CYCLING は使えない車両・枠も含む設置上の数で、貸出可能台数と返却可能数の合計より大きいことがある。ドコモ・バイクシェアは 0 のことや、その合計と合わないことがある。1000 以上（HELLO CYCLING は 1000、ドコモ・バイクシェアは 32767）は、返却台数に上限がないポートを表す。is_charging_station（HELLO CYCLING のみ）は電動サイクル（特定小型原動機付自転車）用の充電器があるポートを表し、電動アシスト自転車のバッテリーを交換・充電できるという意味ではない。region_id（ドコモ・バイクシェアのみ）は地域の番号で、地域名を引くデータはない。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "ポート名の一部（例: 新木場駅）",
+          "type": "string"
+        },
+        "operator": {
+          "description": "事業者で絞る。docomo（ドコモ・バイクシェア）か hellocycling（HELLO CYCLING）。省略すると両方",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "limit": {
+          "description": "返す件数（1〜40）",
+          "type": "integer",
+          "default": 5
+        }
+      },
+      "required": [
+        "query"
+      ]
+    },
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "search_ports_nearby",
+    "description": "指定した座標から近い順に、ドコモ・バイクシェアと HELLO CYCLING のシェアサイクルのポート（駐輪場）を返す。各ポートに直線距離 distance_m（m）が付く。\n座標は WGS84（世界測地系）の 10 進度で指定する。Google Maps や駅すぱあと（gcs=wgs84）の座標はそのまま使える。\n旧日本測地系の値は東京付近で約 400 m ずれるので使わないこと。\navailable_for を省略すると空き状況（貸出可能台数など）は含まないので、必要なら port_id を get_port_status に渡す。\navailable_for に rent を指定すると今借りられる（貸出受付中で 1 台以上ある）ポートだけ、return を指定すると今返せる（返却受付中で空き枠がある）ポートだけを近い順に返し、\nnum_bikes_available / num_docks_available を付ける。条件に合うポートが遠くにしかなければ distance_m が大きくなる。\ncapacity（収容数）は目安で、空きの判断には使わず get_port_status の台数を見ること。HELLO CYCLING は使えない車両・枠も含む設置上の数で、貸出可能台数と返却可能数の合計より大きいことがある。ドコモ・バイクシェアは 0 のことや、その合計と合わないことがある。1000 以上（HELLO CYCLING は 1000、ドコモ・バイクシェアは 32767）は、返却台数に上限がないポートを表す。is_charging_station（HELLO CYCLING のみ）は電動サイクル（特定小型原動機付自転車）用の充電器があるポートを表し、電動アシスト自転車のバッテリーを交換・充電できるという意味ではない。region_id（ドコモ・バイクシェアのみ）は地域の番号で、地域名を引くデータはない。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "description": "緯度（WGS84、10 進度。例: 35.681236）",
+          "type": "number"
+        },
+        "longitude": {
+          "description": "経度（WGS84、10 進度。例: 139.767125）",
+          "type": "number"
+        },
+        "operator": {
+          "description": "事業者で絞る。docomo（ドコモ・バイクシェア）か hellocycling（HELLO CYCLING）。省略すると両方",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "limit": {
+          "description": "返す件数（1〜40）",
+          "type": "integer",
+          "default": 10
+        },
+        "available_for": {
+          "description": "rent（今借りられるポートだけ）か return（今返せるポートだけ）。省略すると空き状況を見ずに近い順",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "latitude",
+        "longitude"
+      ]
+    },
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    }
+  }
+]
