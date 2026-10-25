@@ -23,6 +23,40 @@ jobs:
       - name: Test
         run: dotnet test
 
+  # Cloudflare Workers 版はビルドと wrangler dev での確認まで（デプロイはしない）
+  workers:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.402'
+
+      # mise.toml の node と wrangler だけを入れる（.NET SDK は setup-dotnet のものを使う）
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          install_args: node npm:wrangler
+
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: .cache/wasi-sdk
+          key: wasi-sdk-29.0-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build
+        run: scripts/workers.sh build
+
+      - name: Smoke test
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          (cd src/CycleSharingMcp.Workers && wrangler dev --port 8787 --ip 127.0.0.1 --var SELFTEST:1 > "$RUNNER_TEMP/wrangler.log" 2>&1 &)
+          if ! python .github/scripts/workers_smoke_test.py http://127.0.0.1:8787; then
+            cat "$RUNNER_TEMP/wrangler.log"
+            exit 1
+          fi
+
   build:
     name: build (${{ matrix.rid }})
     needs: test
