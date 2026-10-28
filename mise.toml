@@ -2,7 +2,7 @@
 # Renovate の mise マネージャーは dotnet-core の名前でだけ .NET SDK を扱える（中身は dotnet と同じ core:dotnet）
 dotnet-core = "10.0.403"
 # GitHub Actions のアクションをコミット SHA に固定する（pinact run）
-pinact = "5.0.1"
+pinact = "5.0.2"
 # Cloudflare Workers 版の手元での起動（wrangler dev）とデプロイ
 node = "24"
 "npm:wrangler" = "4.151.3"
