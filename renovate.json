@@ -3,26 +3,16 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "timezone": "Asia/Tokyo",
   "minimumReleaseAge": "3 days",
-  "customManagers": [
-    {
-      "description": "ワークフローの setup-dotnet に渡す .NET SDK のバージョン（mise.toml の dotnet-core と揃える）",
-      "customType": "regex",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
-      "matchStrings": ["dotnet-version: '(?<currentValue>[^']+)'"],
-      "datasourceTemplate": "dotnet-version",
-      "depNameTemplate": "dotnet-sdk"
-    }
-  ],
   "packageRules": [
-    {
-      "description": "mise.toml とワークフローの .NET SDK は同じ PR で上げる",
-      "groupName": ".NET SDK",
-      "matchDatasources": ["dotnet-version"]
-    },
     {
       "description": "GitHub Actions はまとめて上げる（pinact と同じくコミット SHA に固定したまま）",
       "groupName": "GitHub Actions",
       "matchManagers": ["github-actions"]
+    },
+    {
+      "description": "mise.toml とワークフローの .NET SDK は同じ PR で上げる。setup-dotnet の dotnet-version も github-actions マネージャーが読むので、上のルールより後に置いて .NET SDK のグループに入れる",
+      "groupName": ".NET SDK",
+      "matchDatasources": ["dotnet-version"]
     },
     {
       "description": "dotnet/runtime から同時にリリースされる Microsoft.Extensions",
