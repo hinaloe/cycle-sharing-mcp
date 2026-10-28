@@ -8,4 +8,8 @@
     <RootNamespace>CycleSharingMcp.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="ToolDefinitions.json" LogicalName="ToolDefinitions.json" />
+  </ItemGroup>
+
 </Project>

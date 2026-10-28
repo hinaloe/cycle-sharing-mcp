@@ -1,7 +1,4 @@
 using System.Net;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using CycleSharingMcp;
 using CycleSharingMcp.Core;
 using Microsoft.AspNetCore.Builder;
@@ -22,14 +19,8 @@ catch (ArgumentException ex)
     return 2;
 }
 
-var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
-{
-    // 日本語を \uXXXX にエスケープするとトークンを無駄に消費するのでそのまま出す
-    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
-};
+// Workers 版と同じ JSON の形にする
+var serializerOptions = BikeshareJson.CreateServerOptions();
 
 // ホストのビルダーには args を渡さない（--http のような値のない引数を構成プロバイダーが誤解釈するため）
 if (options.Http)

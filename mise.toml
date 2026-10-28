@@ -3,6 +3,9 @@
 dotnet-core = "10.0.403"
 # GitHub Actions のアクションをコミット SHA に固定する（pinact run）
 pinact = "5.0.1"
+# Cloudflare Workers 版の手元での起動（wrangler dev）とデプロイ
+node = "24"
+"npm:wrangler" = "4.151.3"
 
 [tasks.build]
 run = "dotnet build -c Release"
@@ -17,3 +20,11 @@ run = "dotnet run --project src/CycleSharingMcp -c Release --no-launch-profile"
 [tasks.publish]
 description = "このマシン向けの自己完結型単一バイナリを ./dist に出力（.NET ランタイム不要）"
 run = "dotnet publish src/CycleSharingMcp -c Release --use-current-runtime --self-contained -p:PublishSingleFile=true -o dist"
+
+[tasks."workers:build"]
+description = "Cloudflare Workers 版をビルドする（macOS では Docker を使う）"
+run = "scripts/workers.sh build"
+
+[tasks."workers:dev"]
+description = "Cloudflare Workers 版をビルドして、手元の wrangler dev で起動する"
+run = "scripts/workers.sh dev"

@@ -87,6 +87,27 @@ public class OdptFeedSourceTests
     }
 
     [Fact]
+    public async Task FeedSource_PassesWaitForOthersToCaches()
+    {
+        var gate = new TaskCompletionSource();
+        var handler = new FixtureHandler { Gate = gate };
+        var waits = 0;
+        var source = new OdptFeedSource(new HttpClient(handler), new OdptOptions(null), time, (load, _) =>
+        {
+            waits++;
+            return load;
+        });
+
+        var first = source.GetPortsAsync(Operator.Docomo, default);
+        var second = source.GetPortsAsync(Operator.Docomo, default);
+        gate.SetResult();
+
+        Assert.Equal((await first).Count, (await second).Count);
+        Assert.Equal(1, waits);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task FeedSource_FailureThenSuccess_Retries()
     {
         var handler = new FixtureHandler { Status = HttpStatusCode.ServiceUnavailable };
@@ -104,18 +125,22 @@ public class OdptFeedSourceTests
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
         public Exception? Throw { get; init; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        /// <summary>設定すると、完了するまで応答を返さない（取得中に別の呼び出しが来る状況を作る）。</summary>
+        public TaskCompletionSource? Gate { get; init; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!);
+            if (Gate is not null) await Gate.Task;
             if (Throw is not null) throw Throw;
-            if (Status != HttpStatusCode.OK) return Task.FromResult(new HttpResponseMessage(Status));
+            if (Status != HttpStatusCode.OK) return new HttpResponseMessage(Status);
 
             var segments = request.RequestUri!.AbsolutePath.Split('/');
             var prefix = segments[^2] == "docomo-cycle" ? "docomo" : "hellocycling";
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(Fixtures.Read($"{prefix}_{segments[^1]}")),
-            });
+            };
         }
     }
 }

@@ -1,19 +1,20 @@
 # TODO
 
-## Cloudflare Workers 対応
+## Cloudflare Workers 版
 
-- 候補: [nenoNaninu/cloudflare-workers-dotnet](https://github.com/nenoNaninu/cloudflare-workers-dotnet)（`Cloudflare.Workers.Hosting`）。C# を NativeAOT-LLVM で WASM にして Workers で動かす。
-- 追加するのは「フィードの取得とキャッシュ」（`IFeedSource` の実装）と「MCP の受け口」だけ。検索・状態・事業者情報は `src/CycleSharingMcp.Core` の `BikeshareService` をそのまま使う。
-  - コアは ASP.NET Core・`Microsoft.Extensions.Hosting`・MCP SDK を参照せず、`Task.Run`・スレッド・`Task.Delay` も使わない。この制約は守り続ける。
-  - 応答は record なので、WASM（トリミングあり）では JSON ソース生成（`JsonSerializerContext`）に載せる。
-- 制約:
-  - ASP.NET Core ではないので `ModelContextProtocol.AspNetCore` は使えず、MCP SDK 本体も動く見込みが薄い。MCP の JSON-RPC（`initialize` / `tools/list` / `tools/call`、Streamable HTTP）を手で書く必要がありそう。
-  - シングルスレッドで、`Task.Run` / `Task.Delay` / `Thread.Sleep` は使えない。
-  - 外向きの HTTP は `HttpClient` + `FetchHttpMessageHandler`。
-  - 正規化（`string.Normalize`）が WASM で ICU なしに動くか確かめる。
-- 依存:
-  - 実験版の `Microsoft.DotNet.ILCompiler.LLVM`（dotnet-experimental のフィードを足した `nuget.config` が必要）。
-  - WASI SDK（`WASI_SDK_PATH`）。
-  - wrangler。wrangler など Workers 関連のツールも mise に追加する。
-- データの重さ: HELLO CYCLING の `station_information`（約 8 MB、約 15,600 ポート）をリクエストのたびに WASM で解析すると、CPU 時間（無料プランは 10 ms）やメモリ（128 MB）の制限に掛かるおそれがある。
-  Scheduled Handler で定期的に軽い形へ変換して KV に置く、などの仕組みが要る。
+Workers 版（`src/CycleSharingMcp.Workers`）は、手元の `wrangler dev` と CI での確認まで。残っていること:
+
+- 本番の Workers で動かして確かめる（有料プラン）。
+  - メモリ: HELLO CYCLING の `station_information`（約 8 MB、約 15,600 ポート）の解析中に約 51 MB を使う（手元の計測）。取得した本文が JavaScript 側にも残ることや、TTL が切れて取り直すときに古いデータと新しいデータが同時に残ることを考えると、上限 128 MB に対して余裕は大きくない。
+  - CPU 時間: 初回の取得・解析で 1 秒前後（手元の計測）。
+  - Claude.ai・ChatGPT・Notion などのコネクタから実際に使えるか。
+- 上限に掛かった場合の対策（そのときに決める）:
+  - コアの `Port` を軽くする（検索用の正規化済み文字列を持たないなど）。
+  - 事業者ごとに必要になってから読み込む。
+  - Scheduled Handler（Cron）で定期的に軽い形へ変換し、KV などに置く。
+- 取得中に同時に来たリクエストは、取得を始めたリクエストの完了を自分のタイマーで少しずつ確かめながら待つ（別のリクエストの I/O だけを待つと Workers がハングとみなして打ち切るため）。待つのは最大 60 秒。
+  取得を始めたリクエストがクライアントの切断などで取り消されて取得が終わらないままになると、isolate が作り直されるまで、そのフィードを使う呼び出しが毎回 60 秒待ってエラーになるおそれがある（手元の wrangler dev では切断しても取得が最後まで走り、再現できていない）。本番で起きるなら、一定時間を過ぎた取得を捨てて取り直す仕組みを `FeedCache` に足す。
+- WebAssembly が 13 MB（gzip 3.6 MB）ある。Worker のサイズの上限（圧縮前 64 MiB、2026-09 以降は無料・有料とも）には収まるが、
+  Workers には「起動（グローバルスコープの解析と実行）は 1 秒まで」という制限がある。手元の wrangler dev では、WebAssembly の読み込みを含む最初のリクエストに 1.4 秒ほどかかった。
+  デプロイ時にこの制限に掛かるか確かめ、掛かるなら何が大きいかを調べて削る。
+- `Microsoft.DotNet.ILCompiler.LLVM` は dotnet-experimental フィードの実験版で、macOS 向けが配信されていない。正式版が出たら乗り換える。

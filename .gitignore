@@ -4,3 +4,7 @@ dist/
 .vs/
 .idea/
 *.user
+# Workers 版: ダウンロードした WASI SDK と、wrangler dev の作業ファイル
+.cache/
+.wrangler/
+node_modules/

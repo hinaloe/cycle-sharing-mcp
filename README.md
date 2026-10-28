@@ -81,6 +81,48 @@ claude mcp add --transport http cycle-sharing http://127.0.0.1:8080/mcp
 > [!WARNING]
 > HTTP には認証がありません。`--host 0.0.0.0` などで外から届くようにするときは、リバースプロキシなどの手前で認証してください。
 
+## Cloudflare Workers で動かす
+
+同じ 5 つのツールを Cloudflare Workers 上で動かし、Claude.ai・ChatGPT などのカスタムコネクタとして使える（`src/CycleSharingMcp.Workers`）。
+[cloudflare-workers-dotnet](https://github.com/nenoNaninu/cloudflare-workers-dotnet)（`Cloudflare.Workers.Hosting`）で C# を WebAssembly にして動かす。
+
+- エンドポイントは `POST /mcp`（Streamable HTTP。セッションを持たず、SSE も使わない）。認証はない。
+- ODPT のアクセストークンは使わず、公開版のデータだけを使う（誰でも呼べる URL になるため）。
+- 取得したデータは isolate のメモリにキャッシュする（空き状況 1 分、そのほか 1 時間）。isolate が作り直された直後のリクエストは、WebAssembly の読み込みとデータの取得・解析で数秒かかる。
+- WebAssembly では .NET の NFKC が使えないので、全角・半角などの正規化はホストの JavaScript の `normalize('NFKC')` で行う。
+
+### ビルドと手元での確認
+
+```sh
+mise install              # .NET SDK・Node.js・wrangler
+mise run workers:build    # WASI SDK を .cache/ に取得してビルドする
+mise run workers:dev      # ビルドして wrangler dev で起動する（http://localhost:8787/mcp）
+```
+
+- 使うコンパイラ（NativeAOT-LLVM、dotnet-experimental フィードの実験版）は macOS 向けが配信されていないので、macOS では Linux（arm64）の .NET SDK コンテナの中でビルドする。Docker が要る。Linux はそのままビルドできる。Windows は確かめていない。
+- Workers 版のプロジェクトはソリューションに入れていないので、`mise run build` / `mise run test` には含まれない。CI では Linux でビルドし、`wrangler dev` に対して `.github/scripts/workers_smoke_test.py` を実行する。
+
+```sh
+curl -s -X POST http://localhost:8787/mcp -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_ports_by_name","arguments":{"query":"新木場駅","limit":3}}}'
+```
+
+### デプロイとコネクタへの登録
+
+Workers の**有料プラン**が要る（データの解析に CPU 時間が 1 秒前後かかり、無料プランの上限 10 ms を超える）。`wrangler.jsonc` にはアカウントに依存する設定を入れていないので、自分の環境で指定してデプロイする。
+
+```sh
+mise run workers:build
+cd src/CycleSharingMcp.Workers
+wrangler deploy           # 初回は wrangler login。アカウントが複数あれば CLOUDFLARE_ACCOUNT_ID などで指定する
+```
+
+デプロイ先の `https://<Worker 名>.<アカウントのサブドメイン>.workers.dev/mcp` を、各サービスのカスタムコネクタに「認証なし」で登録する。
+誰でも呼べる URL になるので、必要なら Cloudflare 側で流量制限（Rate Limiting など）をかける。
+
+> [!NOTE]
+> 本番の Workers ではまだ動かしていない。手元の計測では、HELLO CYCLING のデータの解析中に約 51 MB のメモリを使う（Workers の上限は 1 isolate あたり 128 MB）。上限に掛かった場合の対策は `TODO.md` を参照。
+
 ## クレジット表示とライセンス
 
 | 事業者 | クレジット表示（提供者名） | ライセンス |

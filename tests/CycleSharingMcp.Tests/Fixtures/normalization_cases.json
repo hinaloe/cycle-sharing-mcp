@@ -1,0 +1,9 @@
+[
+  { "kind": "name", "input": "ｼﾌﾞﾔ　Ｐｏｒｔ", "expected": "しぶやport" },
+  { "kind": "name", "input": "ｶﾞﾊﾟｰｸ", "expected": "がぱーく" },
+  { "kind": "name", "input": "松坂屋上野店ｱﾈｯｸｽ1F", "expected": "松坂屋上野店あねっくす1f" },
+  { "kind": "name", "input": "Ａ４－０１．丸ビル（南側）", "expected": "a4-01.丸びる(南側)" },
+  { "kind": "name", "input": "セブンイレブン　浦和南部領店", "expected": "せぶんいれぶん浦和南部領店" },
+  { "kind": "address", "input": "東京都台東区台東４丁目３１－１", "expected": "東京都台東区台東4-31-1" },
+  { "kind": "address", "input": "大阪府大阪市城東区中央２丁目１４－Ｃ", "expected": "大阪府大阪市城東区中央2-14-c" }
+]
