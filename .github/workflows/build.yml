@@ -35,7 +35,7 @@ jobs:
           dotnet-version: '10.0.402'
 
       # mise.toml の node と wrangler だけを入れる（.NET SDK は setup-dotnet のものを使う）
-      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
           install_args: node npm:wrangler
 
