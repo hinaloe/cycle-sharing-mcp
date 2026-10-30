@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Cloudflare.Workers.Hosting" Version="0.3.0" />
+    <PackageReference Include="Cloudflare.Workers.Hosting" Version="0.4.0" />
     <!-- dotnet-experimental フィードの実験版。macOS 向けは配信されていないので、macOS ではコンテナでビルドする -->
     <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-rc.1.26357.1" />
     <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-rc.1.26357.1" />
