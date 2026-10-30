@@ -5,7 +5,7 @@ dotnet-core = "10.0.403"
 pinact = "5.0.1"
 # Cloudflare Workers 版の手元での起動（wrangler dev）とデプロイ
 node = "24"
-"npm:wrangler" = "4.151.3"
+"npm:wrangler" = "4.154.0"
 
 [tasks.build]
 run = "dotnet build -c Release"
